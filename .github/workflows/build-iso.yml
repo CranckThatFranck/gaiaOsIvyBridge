@@ -22,6 +22,11 @@ jobs:
           sudo apt-get clean
           df -h
 
+      - name: Dependências do live-build
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y debootstrap cpio ca-certificates curl
+
       - name: Construir a ISO
         run: ./scripts/build-iso.sh
 

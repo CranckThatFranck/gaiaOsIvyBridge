@@ -26,19 +26,22 @@ echo "[gaia-iso] Pacote gaiaos-core..."
 "$ROOT/scripts/build-gaia-deb.sh"
 DEB="$(ls -1t "$DIST"/gaiaos-core_*_amd64.deb | head -1)"
 
+# debootstrap e cpio são Depends do live-build do Trixie. dpkg -i sozinho
+# deixa o pacote desconfigurado no Ubuntu 24.04 se eles ainda não estiverem instalados.
+echo "[gaia-iso] Dependências do host..."
+as_root apt-get update -qq
+as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    debootstrap cpio debian-archive-keyring squashfs-tools xorriso \
+    grub-efi-amd64-bin grub-common grub-pc-bin mtools dosfstools \
+    isolinux syslinux-common ca-certificates curl wget xz-utils
+
 if ! command -v lb >/dev/null 2>&1 || ! lb --version 2>/dev/null | grep -q '20250505'; then
     echo "[gaia-iso] Instalando live-build do Debian Trixie (o pacote do Ubuntu 24.04 é antigo demais)..."
     tmpdeb="$(mktemp --suffix=.deb)"
     curl -fsSL -o "$tmpdeb" https://deb.debian.org/debian/pool/main/l/live-build/live-build_20250505+deb13u1_all.deb
-    as_root dpkg -i "$tmpdeb"
+    as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y "$tmpdeb"
     rm -f "$tmpdeb"
 fi
-
-as_root apt-get update -qq
-as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    debootstrap debian-archive-keyring squashfs-tools xorriso \
-    grub-efi-amd64-bin grub-common grub-pc-bin mtools dosfstools cpio \
-    isolinux syslinux-common ca-certificates curl
 
 echo "[gaia-iso] Configurando live-build em $WORK"
 cache_keep=""
