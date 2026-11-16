@@ -37,7 +37,6 @@ def load_api_key() -> str:
     candidate_files = [
         "/etc/gaiaos/guardian.env",
         "/home/francisco/.bashrc",
-        "/home/francisco/Documentos/Projetos/Thai/ThaiBackend/.env",
     ]
     for path in candidate_files:
         if os.path.isfile(path):
@@ -138,7 +137,7 @@ def main() -> int:
         return 1
 
     snap = collect_snapshot()
-    prompt = f"""Você é o núcleo de inteligência autônoma do sistema operacional Gaia OS 1.0 (Westmere Edition), rodando em um notebook Gateway NV55C (CPU Intel Core i7-640M, 5.5 GiB RAM, 6 GiB zRAM zstd, MGLRU ativo, KDE Plasma Wayland).
+    prompt = f"""Você é o núcleo de inteligência autônoma do Gaia OS Ivy Bridge Edition, num desktop Intel Core i7-3770 (4C/8T, AVX, 16 GiB DDR3, zRAM zstd de cerca de 4 GiB, MGLRU ativo, KDE Plasma Wayland, GPU Intel HD 4000). O alerta térmico padrão é 90 C (TJMax 105 C). Não recomende zRAM de 6 GiB nem descarte agressivo de abas como se a máquina tivesse 6 GiB.
 Motivo do acionamento: {reason}
 
 Telemetria em tempo real da máquina:

@@ -1,24 +1,35 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Gaia OS 1.0 - Otimização de Serviços em Background & Chrome Memory Saver (Etapa 3)
-# ==============================================================================
+# Serviços enxutos no desktop Ivy Bridge: sem modem, Docker sob demanda se existir.
+# fwupd permanece disponível (a placa é UEFI). Não há o mascaramento do notebook.
 set -euo pipefail
 
-GAIA_ROOT="/home/francisco/Documentos/Projetos/GaiaOS"
+if [ -n "${GAIA_ROOT:-}" ] && [ -f "${GAIA_ROOT}/performance/gaia-chrome-performance.json" ]; then
+    SOURCE="$GAIA_ROOT"
+elif [ -f /usr/share/gaiaos/performance/gaia-chrome-performance.json ]; then
+    SOURCE=/usr/share/gaiaos
+else
+    SOURCE="$(cd "$(dirname "$0")/.." && pwd)"
+fi
 
-echo "[gaia-lean-services] 1. Instalando política de Economia de Memória (HighEfficiencyMode) no Google Chrome..."
-sudo mkdir -p /etc/opt/chrome/policies/managed
-sudo cp "$GAIA_ROOT/performance/gaia-chrome-performance.json" /etc/opt/chrome/policies/managed/gaia-performance.json
-sudo chmod 644 /etc/opt/chrome/policies/managed/gaia-performance.json
+as_root() {
+    if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi
+}
 
-echo "[gaia-lean-services] 2. Convertendo Docker para ativação sob demanda (docker.socket)..."
-sudo systemctl disable --now docker.service 2>/dev/null || true
-sudo systemctl stop containerd.service 2>/dev/null || true
-sudo systemctl enable --now docker.socket 2>/dev/null || true
+echo "[gaia-lean-services] Política de memória do Chrome (moderada, 16 GiB)..."
+as_root mkdir -p /etc/opt/chrome/policies/managed
+as_root cp "$SOURCE/performance/gaia-chrome-performance.json" /etc/opt/chrome/policies/managed/gaia-performance.json
+as_root chmod 644 /etc/opt/chrome/policies/managed/gaia-performance.json
 
-echo "[gaia-lean-services] 3. Desativando daemons ociosos desnecessários no Gateway NV55C (ModemManager, fwupd)..."
-sudo systemctl disable --now ModemManager.service 2>/dev/null || true
-sudo systemctl stop fwupd.service 2>/dev/null || true
-sudo systemctl mask fwupd-refresh.timer 2>/dev/null || true
+if systemctl list-unit-files docker.service >/dev/null 2>&1; then
+    echo "[gaia-lean-services] Docker em socket activation..."
+    as_root systemctl disable --now docker.service 2>/dev/null || true
+    as_root systemctl enable --now docker.socket 2>/dev/null || true
+else
+    echo "[gaia-lean-services] Docker não está instalado; nada a converter."
+fi
 
-echo "[gaia-lean-services] Otimização de serviços e políticas do navegador concluída!"
+echo "[gaia-lean-services] Sem modem celular neste desktop: ModemManager fica desligado se existir."
+as_root systemctl disable --now ModemManager.service 2>/dev/null || true
+as_root systemctl mask ModemManager.service 2>/dev/null || true
+
+echo "[gaia-lean-services] Concluído. fwupd não foi mascarado."

@@ -1,0 +1,11 @@
+[Unit]
+Description=Preferência de energia do intel_pstate (desktop Ivy Bridge)
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/gaia-cpufreq
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

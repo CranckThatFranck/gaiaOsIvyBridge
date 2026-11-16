@@ -1,0 +1,11 @@
+build/
+dist/
+__pycache__/
+*.pyc
+*.iso
+*.iso.sha256
+*.iso.part*
+*.ppm
+chroot.files
+chroot.packages.*
+.live-build/

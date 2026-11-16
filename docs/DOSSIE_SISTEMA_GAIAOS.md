@@ -1,11 +1,38 @@
-# Dossier Técnico e Arquitetura do Gaia OS 1.0
+# Dossiê Técnico e Arquitetura do Gaia OS
 
-> **Distribuição:** Gaia OS 1.0 (Debian GNU/Linux 12 Bookworm Customizado)  
+> **Edição atual:** Gaia OS Ivy Bridge Edition 1.0  
+> **Base:** Debian GNU/Linux 13 (Trixie), com `trixie-security`, `trixie-updates` e `trixie-backports` (prioridade 100)  
+> **Máquina alvo:** desktop Intel Core i7-3770 (Ivy Bridge, 4C/8T), chipset B75, 16 GiB DDR3-1600, Intel HD Graphics 4000, Realtek RTL8111/8168, SSD SATA 256 GB, UEFI  
+> **Kernel:** metapacote `linux-image-amd64` da série 6.12 LTS (a versão exata fica em `/etc/gaiaos/build-versions.txt` da ISO)  
+> **Interface:** KDE Plasma 6.3 (Wayland por padrão, X11 em `plasmax11`), SDDM, Breeze Dark  
+> **Instalação:** [`INSTALACAO_IVYBRIDGE.md`](INSTALACAO_IVYBRIDGE.md)  
+> **Data:** 16 de Novembro de 2026  
+
+O restante deste dossiê conserva o histórico da **edição Westmere** (Gateway NV55C, Debian 12, Plasma 5.27.5, kernel 6.1). Os escudos de CVE-2026-98432, Node2Shell e PHP2Shell continuam iguais. O que mudou para o desktop está na seção abaixo e no README.
+
+## 0. O que a edição Ivy Bridge reavaliou
+
+| Peça Westmere | No desktop i7-3770 |
+| :--- | :--- |
+| zRAM de 6 GiB (100% da RAM) e `vm.swappiness=150` | zRAM zstd de **25%** (~4 GiB em 16 GiB) e swappiness **60**. `page-cluster=0` permanece. |
+| Alerta térmico aos 82 °C (CPU móvel) | Alerta aos **90 °C**. O TJMax do i7-3770 é 105 °C; 80 °C sob carga é normal num desktop. |
+| `acpi-cpufreq`, sem AVX | `intel_pstate` em `balance_performance`. AVX e AES-NI existem; o Debian amd64 já os usa em tempo de execução. Não recompilamos o userland com `-march=ivybridge`. |
+| initramfs `i915 ath9k tg3` | `i915` e `r8169`. Não há Wi-Fi nem Bluetooth. |
+| `ModemManager` e `fwupd` mascarados | `ModemManager` mascarado (não há modem). **fwupd não é mascarado**: a placa é UEFI, mas a BIOS AMI 4.6.5 da B75 provavelmente não está no LVFS. |
+| Chrome com descarte agressivo de abas (`MemorySaverModeSavings: 2`) | Valor **1** (moderado). 16 GiB não precisam do perfil de 6 GiB. |
+| Plasma 5.27.5 / Qt5 no desktop | Plasma **6.3.6** / Qt 6. A interface do Guardian passou para PyQt6 para não puxar o Qt5 inteiro. |
+| BIOS legado | UEFI nativo, GRUB `grub-efi-amd64`, tabela GPT, EFI de 600 MiB, `/boot` de 1 GiB, raiz ext4 com TRIM. |
+| Sem canal de atualização de rede | APT de segurança todo dia (`unattended-upgrades`) e `gaia-update.timer` semanal, com snapshot antes. |
+
+---
+
+## Histórico — edição Westmere (Gateway NV55C)
+
+> **Distribuição daquela máquina:** Debian GNU/Linux 12 Bookworm  
 > **Plataforma:** Gateway NV55C — Intel Core i7 M 640 @ 2.80GHz (Westmere/Arrandale, 2C/4T)  
-> **Kernel Ativo:** Linux `6.1.0-55-amd64` (`6.1.192-1`, 2026-11-14)  
-> **Memória:** 5.5 GiB DDR3 física + 6.0 GiB zRAM (compressão `zstd`)  
-> **Interface Gráfica:** KDE Plasma `5.27.5` (Sessão ativa: **Wayland** via SDDM `0.19.0-5`, fallback X11)  
-> **Data de Atualização:** 16 de Novembro de 2026  
+> **Kernel daquela máquina:** Linux `6.1.0-55-amd64` (`6.1.192-1`, 2026-11-14)  
+> **Memória:** 5.5 GiB DDR3 + 6.0 GiB zRAM  
+> **Interface daquela época:** KDE Plasma `5.27.5` / SDDM `0.19.0-5`  
 
 ---
 

@@ -1,16 +1,16 @@
 [Unit]
-Description=Gaia Guardian C Daemon (Ultra-low RAM Telemetry, Anti-Freeze & Gemini 3.8 Flash Advisor)
-After=local-fs.target network.target
+Description=Gaia Guardian (telemetria, PSI e temperatura do i7-3770)
+After=local-fs.target
 
 [Service]
 Type=simple
 EnvironmentFile=-/etc/gaiaos/guardian.env
-ExecStart=/usr/local/bin/gaia-guardian
+ExecStart=/usr/bin/gaia-guardian
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=always
 RestartSec=3
-MemoryHigh=12M
-MemoryMax=24M
+MemoryHigh=16M
+MemoryMax=32M
 
 [Install]
 WantedBy=multi-user.target

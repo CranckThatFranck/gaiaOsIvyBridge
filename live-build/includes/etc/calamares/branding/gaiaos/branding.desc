@@ -1,0 +1,28 @@
+---
+componentName: gaiaos
+welcomeStyleCalamares: false
+windowExpanding: normal
+windowSize: 820px, 600px
+windowPlacement: center
+
+strings:
+  productName: Gaia OS Ivy Bridge Edition
+  shortProductName: Gaia OS
+  version: "1.0"
+  shortVersion: "1.0"
+  versionedName: Gaia OS 1.0 Ivy Bridge Edition
+  shortVersionedName: Gaia OS 1.0
+  bootloaderEntryName: Gaia OS
+  productUrl: https://github.com/CranckThatFranck/gaiaOsIvyBridge
+  supportUrl: https://github.com/CranckThatFranck/gaiaOsIvyBridge
+  knownIssuesUrl: https://github.com/CranckThatFranck/gaiaOsIvyBridge/issues
+  releaseNotesUrl: https://github.com/CranckThatFranck/gaiaOsIvyBridge
+
+sidebar: widget
+navigation: widget
+
+style:
+  SidebarBackground: "#0B0F19"
+  SidebarText: "#E2E8F0"
+  SidebarTextCurrent: "#F8FAFC"
+  SidebarBackgroundCurrent: "#0369A1"

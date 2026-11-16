@@ -1,68 +1,93 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# Gaia OS 1.0 - Aplicador Autônomo de Correções de Segurança (Zero-Network)
-# ==============================================================================
+# Gaia OS — aplica de novo os escudos a partir do pacote ou do repositório.
 set -euo pipefail
 
-GAIA_ROOT="/home/francisco/Documentos/Projetos/GaiaOS"
-ETC_GAIA="/etc/gaiaos/security"
+if [ -n "${GAIA_ROOT:-}" ] && [ -d "${GAIA_ROOT}/security" ]; then
+    SOURCE="$GAIA_ROOT"
+elif [ -d /usr/share/gaiaos/security ]; then
+    SOURCE=/usr/share/gaiaos
+else
+    SOURCE="$(cd "$(dirname "$0")/.." && pwd)"
+fi
+
+ETC_GAIA=/etc/gaiaos/security
+as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
 
 echo "=================================================================="
-echo " [Gaia OS Security Core] Aplicando Correções & Blindagem no Sistema"
+echo " [Gaia OS] Aplicando escudos a partir de ${SOURCE}"
 echo "=================================================================="
 
-# 1. Criar diretórios do sistema
-sudo mkdir -p "$ETC_GAIA"
+as_root mkdir -p "$ETC_GAIA" /etc/sysctl.d /etc/systemd/system
 
-# 2. PRIORIDADE 1: Kernel Linux (CVE-2026-98432 - CVSS 9.8)
-echo "[1/4] Aplicando mitigação de Kernel e Netfilter Raw para CVE-2026-98432..."
-sudo cp "$GAIA_ROOT/security/kernel/98-gaia-security-cve-2026-98432.conf" /etc/sysctl.d/98-gaia-security-cve-2026-98432.conf
-sudo chmod 644 /etc/sysctl.d/98-gaia-security-cve-2026-98432.conf
-sudo sysctl --system >/dev/null
+echo "[1/4] CVE-2026-98432 (sysctl, nftables, serviço)..."
+as_root cp "$SOURCE/security/kernel/98-gaia-security-cve-2026-98432.conf" /etc/sysctl.d/98-gaia-security-cve-2026-98432.conf
+as_root chmod 644 /etc/sysctl.d/98-gaia-security-cve-2026-98432.conf
+as_root sysctl --system >/dev/null
+as_root cp "$SOURCE/security/network/gaia-cve-2026-98432-shield.nft" "$ETC_GAIA/gaia-cve-2026-98432-shield.nft"
+as_root chmod 600 "$ETC_GAIA/gaia-cve-2026-98432-shield.nft"
+as_root nft -f "$ETC_GAIA/gaia-cve-2026-98432-shield.nft"
+if [ -f "$SOURCE/systemd/gaia-security-shield.service" ]; then
+    as_root cp "$SOURCE/systemd/gaia-security-shield.service" /etc/systemd/system/gaia-security-shield.service
+elif [ -f /lib/systemd/system/gaia-security-shield.service ]; then
+    :
+fi
+as_root systemctl daemon-reload || true
+as_root systemctl enable --now gaia-security-shield.service >/dev/null 2>&1 || true
 
-sudo cp "$GAIA_ROOT/security/network/gaia-cve-2026-98432-shield.nft" "$ETC_GAIA/gaia-cve-2026-98432-shield.nft"
-sudo chmod 600 "$ETC_GAIA/gaia-cve-2026-98432-shield.nft"
-sudo nft -f "$ETC_GAIA/gaia-cve-2026-98432-shield.nft"
+echo "[2/4] Node2Shell — escudo de runtime..."
+as_root cp "$SOURCE/security/node/gaia-node-shield.cjs" "$ETC_GAIA/gaia-node-shield.cjs"
+as_root chmod 644 "$ETC_GAIA/gaia-node-shield.cjs"
 
-sudo cp "$GAIA_ROOT/systemd/gaia-security-shield.service" /etc/systemd/system/gaia-security-shield.service
-sudo chmod 644 /etc/systemd/system/gaia-security-shield.service
-sudo systemctl daemon-reload
-sudo systemctl enable gaia-security-shield.service >/dev/null 2>&1 || true
-sudo systemctl start gaia-security-shield.service
-
-# 3. PRIORIDADE 2: Node.js (CVE-2026-111497 "Node2Shell" & TLS/DNS CVEs)
-echo "[2/4] Aplicando correção local do Node.js (CVE-2026-111497) e Runtime Shield..."
-sudo cp "$GAIA_ROOT/security/node/gaia-node-shield.cjs" "$ETC_GAIA/gaia-node-shield.cjs"
-sudo chmod 644 "$ETC_GAIA/gaia-node-shield.cjs"
-
-VULN_NODE="/home/francisco/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+VULN_NODE="${HOME}/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    VULN_NODE="$(getent passwd "$SUDO_USER" | cut -d: -f6)/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+fi
 PATCHED_NODE_24="/usr/share/cursor/resources/app/resources/helpers/node"
-
 if [ -f "$VULN_NODE" ] && [ -f "$PATCHED_NODE_24" ]; then
-    CURRENT_VER=$("$VULN_NODE" -v 2>/dev/null || echo "unknown")
+    CURRENT_VER="$("$VULN_NODE" -v 2>/dev/null || echo unknown)"
     if [ "$CURRENT_VER" = "v24.19.0" ]; then
-        echo "  -> Atualizando binário vulnerável Node.js ($CURRENT_VER) em .cache/codex-runtimes para v24.22.1 local..."
+        echo "  -> Substituindo Node $CURRENT_VER do Codex pelo binário local v24.22.1..."
         cp -p "$VULN_NODE" "${VULN_NODE}.vuln-v24.19.0.bak"
-        chmod 000 "${VULN_NODE}.vuln-v24.19.0.bak"
+        chmod 000 "${VULN_NODE}.vuln-v24.19.0.bak" || true
         cp -f "$PATCHED_NODE_24" "$VULN_NODE"
         chmod 755 "$VULN_NODE"
     fi
 fi
 
-# 4. PRIORIDADE 3: Blindagem de Privacidade e Credenciais Locais na Máquina
-echo "[3/4] Blindando permissões de chaves, segredos OAuth, AWS, GCloud e .env..."
-chmod 700 /home/francisco/.ssh /home/francisco/chaves_e_pem 2>/dev/null || true
-chmod 700 /home/francisco/.aws /home/francisco/.config/gcloud 2>/dev/null || true
-chmod 600 /home/francisco/.boto 2>/dev/null || true
-chmod 600 /home/francisco/chaves_e_pem/* 2>/dev/null || true
-find /home/francisco/Downloads -maxdepth 1 -name "*client_secret*.json" -exec chmod 600 {} + 2>/dev/null || true
-find /home/francisco/Documentos/Projetos -maxdepth 4 -name ".env" -exec chmod 600 {} + 2>/dev/null || true
+echo "[3/4] Permissões de credenciais do usuário que invocou o comando..."
+harden_home() {
+    local home="$1"
+    [ -d "$home" ] || return 0
+    chmod 700 "$home/.ssh" "$home/.aws" "$home/.config/gcloud" "$home/chaves_e_pem" 2>/dev/null || true
+    chmod 600 "$home/.boto" 2>/dev/null || true
+    chmod 600 "$home"/chaves_e_pem/* 2>/dev/null || true
+    find "$home/Downloads" -maxdepth 1 -name '*client_secret*.json' -exec chmod 600 {} + 2>/dev/null || true
+    find "$home" -maxdepth 5 -name '.env' -exec chmod 600 {} + 2>/dev/null || true
+}
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != root ]; then
+    harden_home "$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+fi
+harden_home "${HOME:-}"
+harden_home /home/francisco
 
-# 5. PRIORIDADE 4: Prevenção PHP2Shell (CVE-2026-109618 / CVE-2026-109619 / CVE-2026-115560)
-echo "[4/4] Instalando política preventiva contra PHP2Shell..."
-sudo cp "$GAIA_ROOT/security/php/99-gaia-php2shell-shield.ini" "$ETC_GAIA/99-gaia-php2shell-shield.ini"
-sudo chmod 644 "$ETC_GAIA/99-gaia-php2shell-shield.ini"
+echo "[4/4] Política preventiva PHP2Shell..."
+as_root cp "$SOURCE/security/php/99-gaia-php2shell-shield.ini" "$ETC_GAIA/99-gaia-php2shell-shield.ini"
+as_root chmod 644 "$ETC_GAIA/99-gaia-php2shell-shield.ini"
+for mods in /etc/php/*/mods-available; do
+    [ -d "$mods" ] || continue
+    as_root cp "$ETC_GAIA/99-gaia-php2shell-shield.ini" "$mods/gaia-php2shell.ini"
+    ver="$(basename "$(dirname "$mods")")"
+    if [ -d "/etc/php/$ver/cli/conf.d" ]; then
+        as_root ln -sfn "$mods/gaia-php2shell.ini" "/etc/php/$ver/cli/conf.d/99-gaia-php2shell.ini"
+    fi
+done
 
 echo "=================================================================="
-echo " [Gaia OS Security Core] Todas as correções aplicadas com sucesso!"
+echo " [Gaia OS] Escudos aplicados."
 echo "=================================================================="

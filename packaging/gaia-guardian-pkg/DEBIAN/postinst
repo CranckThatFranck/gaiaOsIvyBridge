@@ -1,7 +1,0 @@
-#!/bin/sh
-set -e
-mkdir -p /var/log/gaia-guardian
-chmod 755 /var/log/gaia-guardian
-systemctl daemon-reload
-systemctl enable gaia-guardian.service >/dev/null 2>&1 || true
-systemctl restart gaia-guardian.service

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Instalar Gaia OS
+GenericName=Instalador
+Exec=gaia-install
+Comment=Instala a Gaia OS Ivy Bridge Edition neste computador
+Keywords=calamares;install;gaia;ivybridge
+Icon=install-debian
+Terminal=false
+Categories=Qt;System;
+StartupWMClass=calamares
+StartupNotify=true

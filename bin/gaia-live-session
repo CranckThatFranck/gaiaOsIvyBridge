@@ -1,0 +1,44 @@
+#!/bin/sh
+# Roda só na mídia live (/run/live/medium). Não existe no sistema instalado.
+set -eu
+
+i=0
+while [ "$i" -lt 90 ]; do
+    if id gaia >/dev/null 2>&1; then
+        break
+    fi
+    i=$((i + 1))
+    sleep 1
+done
+
+if ! id gaia >/dev/null 2>&1; then
+    echo "gaia-live-session: usuário gaia não foi criado a tempo" >&2
+    exit 0
+fi
+
+echo 'gaia:gaia' | chpasswd
+
+mkdir -p /etc/sddm.conf.d
+cat > /etc/sddm.conf.d/zz-gaia-live-autologin.conf << 'EOF'
+[Autologin]
+User=gaia
+Session=plasma
+Relogin=false
+EOF
+
+if [ -d /home/gaia ]; then
+    mkdir -p /home/gaia/.config /home/gaia/Desktop
+    if [ -d /etc/skel/.config ]; then
+        cp -a /etc/skel/.config/. /home/gaia/.config/
+    fi
+    if [ -f /etc/skel/.dmrc ]; then
+        cp -a /etc/skel/.dmrc /home/gaia/.dmrc
+    fi
+    if [ -f /usr/share/applications/calamares-install-debian.desktop ]; then
+        cp /usr/share/applications/calamares-install-debian.desktop /home/gaia/Desktop/
+        chmod 755 /home/gaia/Desktop/calamares-install-debian.desktop || true
+    fi
+    chown -R gaia:gaia /home/gaia
+fi
+
+exit 0

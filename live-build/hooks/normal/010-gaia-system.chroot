@@ -1,0 +1,72 @@
+#!/bin/sh
+set -eu
+
+echo "pt_BR.UTF-8 UTF-8" > /etc/locale.gen
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+locale-gen
+update-locale LANG=pt_BR.UTF-8 LANGUAGE=pt_BR:pt LC_ALL=pt_BR.UTF-8
+
+ln -sfn /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+printf '%s\n' America/Sao_Paulo > /etc/timezone
+
+cat > /etc/default/keyboard << 'EOF'
+XKBMODEL="abnt2"
+XKBLAYOUT="br"
+XKBVARIANT=""
+XKBOPTIONS=""
+BACKSPACE="guess"
+EOF
+
+cat > /etc/default/console-setup << 'EOF'
+ACTIVE_CONSOLES="/dev/tty[1-6]"
+CHARMAP="UTF-8"
+CODESET="Lat15"
+FONTFACE="Fixed"
+FONTSIZE="8x16"
+VIDEOMODE=
+EOF
+
+printf '%s\n' gaia-ivy > /etc/hostname
+cat > /etc/hosts << 'EOF'
+127.0.0.1 localhost
+127.0.1.1 gaia-ivy
+
+::1 localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+EOF
+
+mkdir -p /etc/gaiaos
+{
+    echo "edition=ivybridge"
+    echo "debian_suite=trixie"
+    dpkg-query -W -f='${Package} ${Version}\n' \
+        linux-image-amd64 plasma-desktop plasma-workspace sddm kwin-wayland kwin-x11 \
+        firefox-esr intel-microcode firmware-realtek calamares nodejs gaiaos-core \
+        2>/dev/null || true
+    echo "kernel_image=$(ls /boot/vmlinuz-* 2>/dev/null | sed 's|.*/vmlinuz-||' | sort | tail -1)"
+    date -u +"built=%Y-%m-%dT%H:%M:%SZ"
+} > /etc/gaiaos/build-versions.txt
+
+if [ -f /etc/initramfs-tools/modules ] && [ -f /usr/share/gaiaos/initramfs-modules ]; then
+    while IFS= read -r mod; do
+        [ -n "$mod" ] || continue
+        case "$mod" in
+            "#"*) continue ;;
+        esac
+        if ! grep -qx "$mod" /etc/initramfs-tools/modules; then
+            echo "$mod" >> /etc/initramfs-tools/modules
+        fi
+    done < /usr/share/gaiaos/initramfs-modules
+fi
+
+systemctl enable sddm.service NetworkManager.service fstrim.timer zramswap.service \
+    thermald.service gaia-guardian.service gaia-security-shield.service \
+    gaia-update.timer gaia-cpufreq.service gaia-live-session.service \
+    >/dev/null 2>&1 || true
+systemctl disable --now ModemManager.service >/dev/null 2>&1 || true
+systemctl mask ModemManager.service >/dev/null 2>&1 || true
+
+update-initramfs -u -k all
+
+echo "Hook Gaia concluído: $(cat /etc/gaiaos/build-versions.txt)"

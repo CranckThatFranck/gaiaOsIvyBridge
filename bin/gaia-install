@@ -1,0 +1,18 @@
+#!/bin/sh
+# Atalho da sessão live. A senha do usuário gaia é "gaia".
+set -eu
+
+if [ -f /etc/fstab ]; then
+    sudo mv /etc/fstab /etc/fstab.orig.calamares
+fi
+
+set +e
+sudo -E calamares
+status=$?
+set -e
+
+if [ -f /etc/fstab.orig.calamares ]; then
+    sudo mv /etc/fstab.orig.calamares /etc/fstab
+fi
+
+exit "$status"
