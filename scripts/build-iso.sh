@@ -24,7 +24,7 @@ as_root() {
 
 echo "[gaia-iso] Pacote gaiaos-core..."
 "$ROOT/scripts/build-gaia-deb.sh"
-DEB="$(ls -1t "$DIST"/gaiaos-core_*_amd64.deb | head -1)"
+DEB="$(find "$DIST" -maxdepth 1 -type f -name 'gaiaos-core_*_amd64.deb' -printf '%T@ %p\n' | sort -nr | awk 'NR==1 { sub(/^[^ ]+ /, ""); print; exit }')"
 
 # debootstrap e cpio são Depends do live-build do Trixie. dpkg -i sozinho
 # deixa o pacote desconfigurado no Ubuntu 24.04 se eles ainda não estiverem instalados.

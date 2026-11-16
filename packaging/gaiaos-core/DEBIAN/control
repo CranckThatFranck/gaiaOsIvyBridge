@@ -1,5 +1,5 @@
 Package: gaiaos-core
-Version: 1.0.1+ivybridge1
+Version: 1.0.2+ivybridge1
 Section: admin
 Priority: optional
 Architecture: amd64

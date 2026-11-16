@@ -35,12 +35,13 @@ for needle in \
     './usr/share/wallpapers/GaiaOS-IvyBridge/metadata.json' \
     './usr/share/wallpapers/GaiaOS-IvyBridge/contents/images/2752x1536.jpg' \
     './usr/share/wallpapers/GaiaOS-IvyBridge/contents/images_dark/2752x1536.jpg' \
-    './usr/lib/gaiaos/gaia-wallpaper-default'; do
+    './usr/lib/gaiaos/gaia-wallpaper-default' \
+    './usr/bin/gaia-pick-release'; do
     case "$listing" in
         *"$needle"*) ;;
         *) echo "pacote sem $needle" >&2; exit 1 ;;
     esac
 done
 test "$(dpkg-deb -f "$deb" Package)" = "gaiaos-core"
-test "$(dpkg-deb -f "$deb" Version)" = "1.0.1+ivybridge1"
+test "$(dpkg-deb -f "$deb" Version)" = "1.0.2+ivybridge1"
 echo "OK $deb"
