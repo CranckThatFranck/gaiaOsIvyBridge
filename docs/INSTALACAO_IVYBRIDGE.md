@@ -39,6 +39,14 @@ A sessão live entra sozinha como usuário `gaia`, senha `gaia`, teclado ABNT2, 
 
 ## Instalar no SSD
 
+Na ISO `ivybridge-v1.0`, o Calamares fecha ao abrir: o branding `gaiaos` dessa imagem não tem `slideshow` nem `images`, e o Calamares 3.3.14 termina o processo nesse caso. Antes de clicar no ícone, no terminal da sessão live:
+
+```bash
+sudo sed -i 's/^branding: gaiaos$/branding: debian/' /etc/calamares/settings.conf
+```
+
+O instalador abre com a marca Debian. O sistema instalado continua sendo a Gaia OS. Uma ISO posterior já traz o slideshow e os logotipos.
+
 Abra **Instalar Gaia OS** na área de trabalho.
 
 O Calamares sugere, ao apagar o disco:
@@ -60,7 +68,7 @@ A rede cabeada (RTL8111, módulo `r8169`) deve subir pelo NetworkManager. O paco
 Atualizações:
 
 - Todo dia, `unattended-upgrades` aplica a segurança do Debian.
-- Toda semana, `gaia-update.timer` cria um snapshot (`gaia-snapshot`), roda `apt full-upgrade` (isso inclui kernel novo) e, se houver uma release neste repositório com `gaiaos-core_*_amd64.deb`, instala o pacote mais novo.
+- Toda semana, `gaia-update.timer` cria um snapshot (`gaia-snapshot`), roda `apt full-upgrade` (isso inclui kernel novo) e instala o `gaiaos-core` mais novo entre as releases `gaiaos-core-*`, conferindo o SHA-256 publicado na API.
 - Na hora: `sudo gaia-update`
 - Só os escudos e ferramentas Gaia: `sudo gaia-update --tools`
 - Voltar configurações: `gaia-snapshot list` e `gaia-snapshot rollback`

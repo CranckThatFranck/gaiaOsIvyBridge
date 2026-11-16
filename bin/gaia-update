@@ -15,6 +15,70 @@ chmod 644 "$LOG" || true
 
 log() { echo "[$(date -Iseconds)] $*" | tee -a "$LOG"; }
 
+gaia_update_tools() {
+    local page=1 part combined pick deb got newver oldver url digest name
+    combined="$(mktemp)"
+    deb="$(mktemp --suffix=.deb)"
+    printf '%s\n' '[]' > "$combined"
+    trap 'rm -f "$combined" "$deb"' RETURN
+
+    while [ "$page" -le 5 ]; do
+        part="$(mktemp)"
+        if ! curl --fail --proto '=https' --tlsv1.2 --silent --show-error --max-time 40 -L \
+            -o "$part" "https://api.github.com/repos/${REPO}/releases?per_page=100&page=${page}"; then
+            rm -f "$part"
+            if [ "$page" -eq 1 ]; then
+                log "GitHub releases indisponível; ferramentas locais permanecem"
+                return 1
+            fi
+            break
+        fi
+        if ! python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); raise SystemExit(0 if isinstance(d, list) and d else 1)' "$part"; then
+            rm -f "$part"
+            break
+        fi
+        python3 - "$combined" "$part" <<'PY'
+import json, sys
+dest, extra = sys.argv[1], sys.argv[2]
+current = json.load(open(dest, encoding="utf-8"))
+current.extend(json.load(open(extra, encoding="utf-8")))
+json.dump(current, open(dest, "w", encoding="utf-8"))
+PY
+        rm -f "$part"
+        page=$((page + 1))
+    done
+
+    if ! pick="$(gaia-pick-release "$combined")"; then
+        log "nenhuma release gaiaos-core-* com .deb e digest sha256"
+        return 1
+    fi
+    newver="$(printf '%s\n' "$pick" | sed -n '1p')"
+    url="$(printf '%s\n' "$pick" | sed -n '2p')"
+    digest="$(printf '%s\n' "$pick" | sed -n '3p')"
+    name="$(printf '%s\n' "$pick" | sed -n '4p')"
+    oldver="$(dpkg-query -W -f='${Version}' gaiaos-core 2>/dev/null || echo 0)"
+    if ! dpkg --compare-versions "$newver" gt "$oldver"; then
+        log "gaiaos-core $oldver já é atual ($newver)"
+        return 0
+    fi
+    if ! curl --fail --proto '=https' --tlsv1.2 --retry 3 --retry-delay 2 --max-time 180 -L \
+        -o "$deb" "$url"; then
+        log "falha ao baixar $name"
+        return 1
+    fi
+    got="$(sha256sum "$deb" | awk '{print $1}')"
+    if [ "$got" != "$digest" ]; then
+        log "checksum sha256 não confere para $name"
+        return 1
+    fi
+    log "instalando gaiaos-core $oldver -> $newver ($name)"
+    if dpkg -i "$deb" >>"$LOG" 2>&1 || apt-get "${APT_OPTS[@]}" -y -f install >>"$LOG" 2>&1; then
+        return 0
+    fi
+    log "dpkg não instalou $name"
+    return 1
+}
+
 case "$MODE" in
     --auto) AUTO=1 ;;
     --security-only) FULL=0; TOOLS=0 ;;
@@ -67,37 +131,12 @@ if [ "$FULL" -eq 1 ]; then
 fi
 
 if [ "$TOOLS" -eq 1 ] && command -v curl >/dev/null 2>&1; then
-    tmp="$(mktemp)"
-    if curl -fsSL --max-time 40 "https://api.github.com/repos/${REPO}/releases/latest" -o "$tmp"; then
-        url="$(python3 - "$tmp" <<'PY'
-import json, sys
-data = json.load(open(sys.argv[1], encoding="utf-8"))
-for asset in data.get("assets", []):
-    name = asset.get("name", "")
-    if name.startswith("gaiaos-core_") and name.endswith("_amd64.deb"):
-        print(asset.get("browser_download_url", ""))
-        break
-PY
-)"
-        if [ -n "$url" ]; then
-            deb="/tmp/$(basename "$url")"
-            curl -fL --max-time 180 -o "$deb" "$url"
-            newver="$(dpkg-deb -f "$deb" Version)"
-            oldver="$(dpkg-query -W -f='${Version}' gaiaos-core 2>/dev/null || echo 0)"
-            if dpkg --compare-versions "$newver" gt "$oldver"; then
-                log "instalando gaiaos-core $oldver -> $newver"
-                dpkg -i "$deb" >>"$LOG" 2>&1 || apt-get "${APT_OPTS[@]}" -y -f install >>"$LOG" 2>&1
-            else
-                log "gaiaos-core $oldver já é atual ($newver)"
-            fi
-            rm -f "$deb"
-        else
-            log "release sem asset gaiaos-core_*.deb; ferramentas locais permanecem"
+    if ! gaia_update_tools; then
+        log "não foi possível atualizar o gaiaos-core"
+        if [ "$AUTO" -eq 0 ]; then
+            exit 1
         fi
-    else
-        log "GitHub releases indisponível; ferramentas locais permanecem"
     fi
-    rm -f "$tmp"
 fi
 
 log "concluído"

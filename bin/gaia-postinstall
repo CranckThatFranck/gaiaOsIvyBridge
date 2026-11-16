@@ -25,11 +25,11 @@ if [ -f /etc/default/grub ]; then
     else
         echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash i915.modeset=1"' >> /etc/default/grub
     fi
+    if [ -x /usr/sbin/update-grub ]; then
+        update-grub || true
+    fi
 fi
 
-# O usuário live "gaia" não faz parte do squashfs; se aparecer, não deve ficar com sudo irrestrito.
-if id gaia >/dev/null 2>&1; then
-    userdel -r gaia >/dev/null 2>&1 || true
-fi
-
+# A conta live não está no squashfs. Quem se chama gaia aqui foi criado
+# pelo Calamares. Os sudoers da sessão live já foram apagados acima.
 exit 0

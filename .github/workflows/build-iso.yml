@@ -76,13 +76,18 @@ jobs:
 
           Confira o SHA256 em gaiaos-ivybridge-1.0-amd64.iso.sha256.
           Se só houver arquivos .part, junte com scripts/juntar-iso.sh antes de gravar."
+          shopt -s nullglob
+          assets=(dist/*.iso dist/*.iso.sha256 dist/*.iso.part* dist/VERSIONS.txt dist/COMO-JUNTAR.txt)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "nenhum arquivo de ISO para publicar" >&2
+            exit 1
+          fi
           if gh release view "$tag" >/dev/null 2>&1; then
-            if [ -f dist/gaiaos-ivybridge-1.0-amd64.iso ]; then
-              gh release delete-asset "$tag" gaiaos-ivybridge-1.0-amd64.iso.part00 --yes || true
-              gh release delete-asset "$tag" gaiaos-ivybridge-1.0-amd64.iso.part01 --yes || true
-              gh release delete-asset "$tag" COMO-JUNTAR.txt --yes || true
-            fi
-            gh release upload "$tag" dist/* --clobber
+            gh release upload "$tag" "${assets[@]}" --clobber
+            gh release edit "$tag" --latest=false
           else
-            gh release create "$tag" dist/* --title "Gaia OS Ivy Bridge Edition ${tag}" --notes "$notes"
+            gh release create "$tag" "${assets[@]}" \
+              --title "Gaia OS Ivy Bridge Edition ${tag}" \
+              --notes "$notes" \
+              --latest=false
           fi

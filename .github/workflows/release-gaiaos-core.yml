@@ -27,7 +27,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          deb="$(ls -1 dist/gaiaos-core_*_amd64.deb | head -1)"
+          deb="$(find dist -maxdepth 1 -type f -name 'gaiaos-core_*_amd64.deb' -printf '%T@ %p\n' | sort -nr | awk 'NR==1 { sub(/^[^ ]+ /, ""); print; exit }')"
           ver="$(dpkg-deb -f "$deb" Version)"
           tag="gaiaos-core-${ver}"
           notes="Pacote gaiaos-core ${ver}.
@@ -39,6 +39,7 @@ jobs:
           baixa este .deb se a versão for maior que a instalada."
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$deb" --clobber
+            gh release edit "$tag" --latest
           else
             gh release create "$tag" "$deb" \
               --title "gaiaos-core ${ver}" \

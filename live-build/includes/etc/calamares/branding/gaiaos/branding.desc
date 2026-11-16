@@ -18,6 +18,14 @@ strings:
   knownIssuesUrl: https://github.com/CranckThatFranck/gaiaOsIvyBridge/issues
   releaseNotesUrl: https://github.com/CranckThatFranck/gaiaOsIvyBridge
 
+slideshow: "show.qml"
+slideshowAPI: 2
+
+images:
+  productLogo: "logo.png"
+  productIcon: "icon.png"
+  productWelcome: "logo.png"
+
 sidebar: widget
 navigation: widget
 
