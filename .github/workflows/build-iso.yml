@@ -36,7 +36,8 @@ jobs:
           iso=dist/gaiaos-ivybridge-1.0-amd64.iso
           size=$(stat -c%s "$iso")
           echo "Tamanho: $size"
-          if [ "$size" -gt 1900000000 ]; then
+          # O limite do GitHub é 2 GiB (2147483648). Só divide perto desse teto.
+          if [ "$size" -gt 2140000000 ]; then
             split -b 1500M -d -a 2 "$iso" "${iso}.part"
             rm -f "$iso"
             printf '%s\n' \
@@ -76,6 +77,11 @@ jobs:
           Confira o SHA256 em gaiaos-ivybridge-1.0-amd64.iso.sha256.
           Se só houver arquivos .part, junte com scripts/juntar-iso.sh antes de gravar."
           if gh release view "$tag" >/dev/null 2>&1; then
+            if [ -f dist/gaiaos-ivybridge-1.0-amd64.iso ]; then
+              gh release delete-asset "$tag" gaiaos-ivybridge-1.0-amd64.iso.part00 --yes || true
+              gh release delete-asset "$tag" gaiaos-ivybridge-1.0-amd64.iso.part01 --yes || true
+              gh release delete-asset "$tag" COMO-JUNTAR.txt --yes || true
+            fi
             gh release upload "$tag" dist/* --clobber
           else
             gh release create "$tag" dist/* --title "Gaia OS Ivy Bridge Edition ${tag}" --notes "$notes"
