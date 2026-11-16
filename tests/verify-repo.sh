@@ -43,5 +43,5 @@ for needle in \
     esac
 done
 test "$(dpkg-deb -f "$deb" Package)" = "gaiaos-core"
-test "$(dpkg-deb -f "$deb" Version)" = "1.0.2+ivybridge1"
+test "$(dpkg-deb -f "$deb" Version)" = "1.0.3+ivybridge1"
 echo "OK $deb"

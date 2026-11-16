@@ -1,5 +1,7 @@
 #!/bin/sh
 set -e
+# grub-pc is required so xorriso writes an isohybrid MBR and a 0xEF ESP.
+# grub-efi alone only adds El Torito, which Aptio will not boot from USB.
 lb config noauto \
     --mode debian \
     --distribution "${GAIA_DEBIAN_SUITE:-trixie}" \
@@ -20,7 +22,7 @@ lb config noauto \
     --updates true \
     --backports true \
     --binary-images iso-hybrid \
-    --bootloaders grub-efi \
+    --bootloaders grub-pc,grub-efi \
     --uefi-secure-boot enable \
     --debian-installer none \
     --apt-recommends true \
