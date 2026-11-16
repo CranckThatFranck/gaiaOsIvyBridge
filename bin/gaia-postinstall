@@ -1,0 +1,35 @@
+#!/bin/sh
+# Executado pelo Calamares dentro do sistema recém-instalado.
+set -u
+
+rm -f /etc/sudoers.d/gaia-live \
+      /etc/sudoers.d/live \
+      /etc/sddm.conf.d/zz-gaia-live-autologin.conf
+
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl disable gaia-live-session.service >/dev/null 2>&1 || true
+    systemctl enable sddm.service NetworkManager.service fstrim.timer \
+        zramswap.service thermald.service \
+        gaia-guardian.service gaia-security-shield.service \
+        gaia-update.timer gaia-cpufreq.service >/dev/null 2>&1 || true
+    systemctl disable --now ModemManager.service >/dev/null 2>&1 || true
+    systemctl mask ModemManager.service >/dev/null 2>&1 || true
+fi
+
+mkdir -p /etc/gaiaos
+printf '%s\n' 'ivybridge' > /etc/gaiaos/edition
+
+if [ -f /etc/default/grub ]; then
+    if grep -q '^GRUB_CMDLINE_LINUX_DEFAULT=' /etc/default/grub; then
+        sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash i915.modeset=1"|' /etc/default/grub
+    else
+        echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash i915.modeset=1"' >> /etc/default/grub
+    fi
+fi
+
+# O usuário live "gaia" não faz parte do squashfs; se aparecer, não deve ficar com sudo irrestrito.
+if id gaia >/dev/null 2>&1; then
+    userdel -r gaia >/dev/null 2>&1 || true
+fi
+
+exit 0

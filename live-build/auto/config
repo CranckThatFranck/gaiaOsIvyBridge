@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+lb config noauto \
+    --mode debian \
+    --distribution "${GAIA_DEBIAN_SUITE:-trixie}" \
+    --parent-distribution "${GAIA_DEBIAN_SUITE:-trixie}" \
+    --archive-areas "main contrib non-free-firmware" \
+    --parent-archive-areas "main contrib non-free-firmware" \
+    --mirror-bootstrap "${GAIA_MIRROR:-http://deb.debian.org/debian}" \
+    --mirror-chroot "${GAIA_MIRROR:-http://deb.debian.org/debian}" \
+    --mirror-binary "${GAIA_MIRROR:-http://deb.debian.org/debian}" \
+    --parent-mirror-bootstrap "${GAIA_MIRROR:-http://deb.debian.org/debian}" \
+    --parent-mirror-chroot "${GAIA_MIRROR:-http://deb.debian.org/debian}" \
+    --parent-mirror-binary "${GAIA_MIRROR:-http://deb.debian.org/debian}" \
+    --mirror-chroot-security "${GAIA_SECURITY_MIRROR:-http://security.debian.org/debian-security}" \
+    --mirror-binary-security "${GAIA_SECURITY_MIRROR:-http://security.debian.org/debian-security}" \
+    --parent-mirror-chroot-security "${GAIA_SECURITY_MIRROR:-http://security.debian.org/debian-security}" \
+    --parent-mirror-binary-security "${GAIA_SECURITY_MIRROR:-http://security.debian.org/debian-security}" \
+    --security true \
+    --updates true \
+    --backports true \
+    --binary-images iso-hybrid \
+    --bootloaders grub-efi \
+    --uefi-secure-boot enable \
+    --debian-installer none \
+    --apt-recommends true \
+    --apt-indices false \
+    --apt-source-archives false \
+    --firmware-chroot false \
+    --firmware-binary false \
+    --memtest none \
+    --win32-loader false \
+    --checksums sha256 \
+    --compression xz \
+    --iso-application "Gaia OS Ivy Bridge Edition" \
+    --iso-preparer "Gaia OS Ivy Bridge Edition" \
+    --iso-publisher "Gaia OS" \
+    --iso-volume "GAIA_IVY" \
+    --image-name "gaiaos-ivybridge-1.0-amd64" \
+    --bootappend-live "boot=live components quiet splash live-config.hostname=gaia-ivy live-config.username=gaia live-config.user-fullname=Gaia live-config.locales=pt_BR.UTF-8 live-config.timezone=America/Sao_Paulo live-config.keyboard-model=abnt2 live-config.keyboard-layouts=br live-config.user-default-groups=audio,cdrom,dip,floppy,video,plugdev,netdev,sudo,users console=tty0 console=ttyS0,115200n8" \
+    --keyring-packages "debian-archive-keyring" \
+    "${@}"

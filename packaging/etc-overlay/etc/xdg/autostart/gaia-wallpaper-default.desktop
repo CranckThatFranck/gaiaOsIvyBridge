@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Papel de parede padrão do Gaia OS
+Comment=Define o papel de parede Ivy Bridge na primeira sessão, se ainda for o padrão
+Exec=/usr/lib/gaiaos/gaia-wallpaper-default
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2
+X-KDE-StartupNotify=false
+NoDisplay=true

@@ -1,0 +1,11 @@
+[Unit]
+Description=Agenda semanal de atualização do Gaia OS
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+RandomizedDelaySec=2h
+AccuracySec=15min
+
+[Install]
+WantedBy=timers.target

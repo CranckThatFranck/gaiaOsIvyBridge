@@ -1,7 +1,0 @@
-Package: gaia-guardian
-Version: 1.0.1
-Section: admin
-Priority: optional
-Architecture: amd64
-Maintainer: Francisco <francisco@gaiaos.local>
-Description: Gaia OS Native C Guardian Daemon with Ephemeral Gemini 3.8 Flash AI & On-Demand Qt5 UI

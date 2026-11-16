@@ -1,83 +1,74 @@
 {
-    "cpu": {
-        "model": "Intel(R) Core(TM) i7 CPU       M 640  @ 2.80GHz",
-        "vendor": "GenuineIntel",
-        "sockets": "1",
-        "cores": "2",
-        "threads": "4",
-        "march": "westmere",
-        "mtune": "westmere",
-        "vector_crypto_flags": [
-            "aes",
-            "sse4_2"
-        ],
-        "cache_topology": {
-            "L1d": "64 KiB (2 instances)",
-            "L1i": "64 KiB (2 instances)",
-            "L2": "512 KiB (2 instances)",
-            "L3": "4 MiB (1 instance)"
-        },
-        "hybrid_architecture": "Não",
-        "frequency_scaling_driver": "acpi-cpufreq"
+  "edition": "ivybridge",
+  "note": "Perfil-alvo do desktop. Não é uma leitura ao vivo da máquina de build.",
+  "cpu": {
+    "model": "Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz",
+    "vendor": "GenuineIntel",
+    "sockets": "1",
+    "cores": "4",
+    "threads": "8",
+    "march": "ivybridge",
+    "mtune": "ivybridge",
+    "microcode_atual_na_bios": "0x21",
+    "vector_crypto_flags": ["avx", "aes", "sse4_2", "rdrand"],
+    "ausentes": ["avx2", "fma", "bmi1", "bmi2", "sha_ni"],
+    "virtualizacao": "VT-x",
+    "cache_topology": {
+      "L1d": "32 KiB por núcleo (4)",
+      "L1i": "32 KiB por núcleo (4)",
+      "L2": "256 KiB por núcleo (4)",
+      "L3": "8 MiB compartilhado"
     },
-    "gpu": {
-        "devices": [
-            "00:02.0 VGA compatible controller [0300]: Intel Corporation Core Processor Integrated Graphics Controller [8086:0046] (rev 02)"
-        ],
-        "drivers_in_use": [
-            "i915"
-        ],
-        "vulkan_support": "Sem suporte (GPU Ironlake/GMA HD legado não suporta Vulkan API)",
-        "video_acceleration": "Suporte legado via i965-va-driver (VA-API H.264 parcial / MPEG2 total)"
-    },
-    "memory_storage": {
-        "total_ram": "5,5Gi",
-        "ram_slots": [
-            {
-                "size": "4 GiB",
-                "locator": "DIMM0"
-            },
-            {
-                "type": "DIMM",
-                "speed": "1067 MT/s",
-                "size": "2 GiB",
-                "locator": "DIMM1"
-            }
-        ],
-        "storage_devices": [
-            "sda    447,1G disk                   SSD 480GB",
-            "├─sda1     1M part",
-            "├─sda2     2G part ext4   /boot",
-            "└─sda3 445,1G part btrfs  /home",
-            "sdb        0B disk                   Multi-Card",
-            "sr0     1024M rom                    HL-DT-STDVDRAM GT30N",
-            "zram0    5,5G disk swap   [SWAP]"
-        ],
-        "trim_support": "Sim (Suportado pelo SSD sda - discard_granularity = 512 bytes)",
-        "zram_status": "Ativo - /dev/zram0 lzo-rle       5,5G  6,6M  3,8M  5,8M         [SWAP]"
-    },
-    "network_peripherals": {
-        "wifi_card": "02:00.0 Network controller: Qualcomm Atheros AR9485 Wireless Network Adapter (rev 01)",
-        "ethernet_card": "01:00.0 Ethernet controller: Broadcom Inc. and subsidiaries NetLink BCM57780 Gigabit Ethernet PCIe (rev 01)",
-        "bluetooth": "Nenhum adaptador Bluetooth USB detectado",
-        "audio_server": "PipeWire (com pipewire-pulse compatibilidade)",
-        "boot_mode": "BIOS Legado / CSM",
-        "secure_boot": "Não suportado (Sistema em modo BIOS Legado)"
-    },
-    "gaia_os_recommendations": {
-        "march_flag": "-march=westmere",
-        "mtune_flag": "-mtune=westmere",
-        "kernel_compiler_flags": "-O2 -pipe -march=westmere -mtune=westmere",
-        "initramfs_modules": [
-            "i915",
-            "ath9k",
-            "tg3"
-        ],
-        "zram_recommendation": {
-            "algorithm": "zstd",
-            "compression_level": 1,
-            "size": "6GB (100% da RAM física)",
-            "rationale": "Como a máquina possui 6GB de RAM e 2 Cores/4 Threads, a compressão 'zstd' com nível 1 oferece excelente taxa de compressão para otimizar o espaço sem sobrecarregar a CPU. Mantém a máquina responsiva e economiza ciclos valiosos."
-        }
+    "hybrid_architecture": "Não",
+    "frequency_scaling_driver": "intel_pstate"
+  },
+  "board": {
+    "chipset": "Intel B75 / Panther Point",
+    "firmware": "AMI UEFI 4.6.5",
+    "boot": "UEFI nativo, GPT, grub-efi-amd64"
+  },
+  "gpu": {
+    "devices": [
+      "Intel HD Graphics 4000 [8086:0162]"
+    ],
+    "outputs": "HDMI-A-1 em uso; VGA sem uso",
+    "drivers_in_use": ["i915"],
+    "userspace": "modesetting + Mesa crocus; VA-API via i965-va-driver",
+    "vulkan_support": "Sem suporte estável (ANV exige Gen8+)",
+    "video_acceleration": "i965-va-driver com LIBVA_DRIVER_NAME=i965"
+  },
+  "memory_storage": {
+    "total_ram": "16 GiB DDR3-1600 dual channel (máximo da placa: 32 GiB)",
+    "storage_devices": [
+      "sda 256 GB SSD SATA JIEDIAN S3010-25A (TRIM)",
+      "sda1 EFI vfat 600M",
+      "sda2 /boot ext4 1G",
+      "sda3 sistema"
+    ],
+    "controller": "Intel 7 Series AHCI [8086:1e02]",
+    "trim_support": "Sim",
+    "zram_status": "zstd, 25% da RAM (~4 GiB), prioridade 100"
+  },
+  "network_peripherals": {
+    "wifi_card": "Não há hardware Wi-Fi",
+    "ethernet_card": "Realtek RTL8111/8168 [10ec:8168] rev 15, módulo r8169, firmware rtl_nic/rtl8168h-2.fw",
+    "bluetooth": "Não há hardware Bluetooth",
+    "audio": "Intel HDA [8086:1e20] snd_hda_intel, codec Realtek ALC887-VD, analógico e HDMI",
+    "usb": "xHCI [8086:1e31], EHCI [8086:1e26] e [8086:1e2d], SMBus i2c_i801, receptor Lenovo [1a81:1026]",
+    "audio_server": "PipeWire",
+    "boot_mode": "UEFI",
+    "secure_boot": "Possível na AMI; a ISO traz shim-signed. Placas B75 antigas podem exigir Secure Boot desligado para o pendrive."
+  },
+  "gaia_os_recommendations": {
+    "march_flag": "-march=ivybridge",
+    "mtune_flag": "-mtune=ivybridge",
+    "kernel_compiler_flags": "-O2 -pipe -march=ivybridge -mtune=ivybridge",
+    "initramfs_modules": ["i915", "r8169"],
+    "zram_recommendation": {
+      "algorithm": "zstd",
+      "compression_level": 3,
+      "size": "25% da RAM",
+      "rationale": "16 GiB não precisam de zRAM do tamanho da memória. O i7-3770 tem AVX, então zstd no nível padrão do kernel é barato."
     }
+  }
 }

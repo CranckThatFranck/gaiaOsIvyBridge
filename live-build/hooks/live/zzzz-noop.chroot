@@ -1,0 +1,4 @@
+#!/bin/sh
+# live-build 20250505 só executa hooks normal/*.chroot se também existir
+# um hook em hooks/live. Este arquivo existe para satisfazer essa condição.
+exit 0

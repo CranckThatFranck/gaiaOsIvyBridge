@@ -19,10 +19,10 @@ update_index() {
 Origin: Gaia OS Local Agentic Repository
 Label: GaiaOS-Local
 Suite: stable
-Codename: westmere
+Codename: ivybridge
 Architectures: amd64 all
 Components: main
-Description: Repositorio Local Autonomo do Gaia OS 1.0 (Zero-Network)
+Description: Repositorio local do Gaia OS Ivy Bridge Edition
 Date: $(date -Ru)
 EOF
     )

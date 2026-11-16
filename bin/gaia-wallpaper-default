@@ -1,0 +1,61 @@
+#!/bin/sh
+# Aplica o papel de parede Gaia uma única vez, na sessão do usuário.
+# Não mexe de novo se a pessoa já escolheu outra imagem.
+set -u
+
+WALLPAPER=/usr/share/wallpapers/GaiaOS-IvyBridge
+STAMP="${HOME}/.config/gaiaos/wallpaper-default-stamp"
+CFG="${HOME}/.config/plasma-org.kde.plasma.desktop-appletsrc"
+
+[ -f "$STAMP" ] && exit 0
+[ -d "$WALLPAPER" ] || exit 0
+
+is_stock() {
+    case "$1" in
+        ""|Next|Debian|DebianTheme|GaiaOS-IvyBridge|org.kde.plasma.next)
+            return 0
+            ;;
+    esac
+    case "$1" in
+        *"/usr/share/wallpapers/Next"*|*" /usr/share/wallpapers/Next"*|\
+        *"/usr/share/wallpapers/Debian"*|*"GaiaOS-IvyBridge"*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+custom=0
+if [ -f "$CFG" ]; then
+    images=$(awk -F= '/^Image=/ { sub(/^Image=/, ""); print }' "$CFG")
+    oldifs=$IFS
+    IFS='
+'
+    for image in $images; do
+        [ -n "$image" ] || continue
+        if ! is_stock "$image"; then
+            custom=1
+        fi
+    done
+    IFS=$oldifs
+fi
+if [ "$custom" -eq 1 ]; then
+    mkdir -p "${HOME}/.config/gaiaos"
+    echo "user-custom" > "$STAMP"
+    exit 0
+fi
+
+command -v plasma-apply-wallpaperimage >/dev/null 2>&1 || exit 0
+
+i=0
+while [ "$i" -lt 15 ]; do
+    if plasma-apply-wallpaperimage "$WALLPAPER"; then
+        mkdir -p "${HOME}/.config/gaiaos"
+        echo "gaia-default" > "$STAMP"
+        exit 0
+    fi
+    i=$((i + 1))
+    sleep 2
+done
+
+exit 0

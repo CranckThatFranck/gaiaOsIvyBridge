@@ -1,0 +1,14 @@
+[Unit]
+Description=Sessão live do Gaia OS (autologin SDDM e senha temporária)
+ConditionPathExists=/run/live/medium
+DefaultDependencies=no
+Before=sddm.service display-manager.service
+After=live-config.service basic.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/gaiaos/gaia-live-session
+
+[Install]
+WantedBy=multi-user.target

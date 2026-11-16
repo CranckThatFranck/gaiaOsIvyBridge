@@ -1,0 +1,60 @@
+#!/bin/sh
+set -e
+
+mkdir -p /var/log/gaia-guardian /var/local/gaia-repo/pool /etc/gaiaos/security
+chmod 755 /var/log/gaia-guardian /etc/gaiaos /etc/gaiaos/security
+
+if [ ! -f /etc/gaiaos/guardian.env ]; then
+    if [ -f /usr/share/gaiaos/guardian.env.example ]; then
+        cp /usr/share/gaiaos/guardian.env.example /etc/gaiaos/guardian.env
+        chmod 600 /etc/gaiaos/guardian.env
+    fi
+fi
+
+touch /etc/environment
+if ! grep -q 'gaia-node-shield.cjs' /etc/environment 2>/dev/null; then
+    echo 'NODE_OPTIONS=--require /etc/gaiaos/security/gaia-node-shield.cjs' >> /etc/environment
+fi
+if ! grep -q '^LIBVA_DRIVER_NAME=' /etc/environment 2>/dev/null; then
+    echo 'LIBVA_DRIVER_NAME=i965' >> /etc/environment
+fi
+
+if [ -f /usr/share/gaiaos/initramfs-modules ] && [ -f /etc/initramfs-tools/modules ]; then
+    while IFS= read -r mod; do
+        [ -n "$mod" ] || continue
+        case "$mod" in
+            "#"*) continue ;;
+        esac
+        if ! grep -qx "$mod" /etc/initramfs-tools/modules; then
+            echo "$mod" >> /etc/initramfs-tools/modules
+        fi
+    done < /usr/share/gaiaos/initramfs-modules
+fi
+
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl enable gaia-security-shield.service gaia-guardian.service \
+    gaia-update.timer gaia-cpufreq.service >/dev/null 2>&1 || true
+systemctl enable zramswap.service fstrim.timer >/dev/null 2>&1 || true
+
+# zram-tools owns /etc/default/zramswap. We do not ship that path in the deb
+# (dpkg refuses two owners). The desktop profile is 25% / zstd, not the 50% lz4 default.
+cat > /etc/default/zramswap << 'EOF'
+# Gaia OS Ivy Bridge: 25% da RAM, zstd. Não é o padrão de 50%/lz4 do zram-tools.
+ALGO=zstd
+PERCENT=25
+PRIORITY=100
+EOF
+
+if command -v gaia-pkg >/dev/null 2>&1; then
+    gaia-pkg init-repo >/dev/null 2>&1 || true
+fi
+
+sysctl --system >/dev/null 2>&1 || true
+
+if [ -d /run/systemd/system ]; then
+    systemctl restart gaia-security-shield.service >/dev/null 2>&1 || true
+    systemctl restart gaia-guardian.service >/dev/null 2>&1 || true
+    systemctl restart zramswap.service >/dev/null 2>&1 || true
+fi
+
+exit 0

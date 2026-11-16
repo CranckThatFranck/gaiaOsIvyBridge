@@ -1,0 +1,5 @@
+# zRAM para 16 GiB: 25% ≈ 4 GiB, zstd (o i7-3770 tem AVX; o nível padrão do kernel é 3).
+# Na edição Westmere (6 GiB) o zRAM era do tamanho da RAM. Aqui ele só cobre pico.
+ALGO=zstd
+PERCENT=25
+PRIORITY=100

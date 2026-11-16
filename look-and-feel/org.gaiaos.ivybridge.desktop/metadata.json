@@ -1,0 +1,20 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "francisco@gaiaos.local",
+                "Name": "Francisco"
+            }
+        ],
+        "Category": "Plasma Look And Feel",
+        "Description": "Breeze Dark com o papel de parede oficial da Gaia OS Ivy Bridge Edition",
+        "Description[pt_BR]": "Breeze Dark com o papel de parede oficial da Gaia OS Ivy Bridge Edition",
+        "Id": "org.gaiaos.ivybridge.desktop",
+        "License": "GPL-2.0-or-later",
+        "Name": "Gaia OS Ivy Bridge",
+        "Name[pt_BR]": "Gaia OS Ivy Bridge"
+    },
+    "X-KDE-fallbackPackage": "org.kde.breezedark.desktop",
+    "X-Plasma-APIVersion": "2"
+}

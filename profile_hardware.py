@@ -77,11 +77,15 @@ def main():
             if len(parts) > 1 and parts[1].strip():
                 mtune = parts[1].strip()
 
-    # If gcc was unable or not installed, we fallback to westmere since we know it
+    # Sem gcc, não inventamos Westmere: o desktop alvo é Ivy Bridge e outras
+    # máquinas podem aparecer. x86-64-v2 cobre AVX+SSE4.2 sem AVX2.
     if march == "Desconhecido" or not march:
-        march = "westmere"
+        if "avx" in flags_str.lower().split() and "avx2" not in flags_str.lower().split():
+            march = "ivybridge"
+        else:
+            march = "x86-64"
     if mtune == "Desconhecido" or not mtune:
-        mtune = "westmere"
+        mtune = march
 
     cpu_flags = get_cpu_flags_of_interest(flags_str)
     
@@ -125,14 +129,19 @@ def main():
             driver = line.split(":")[1].strip()
             gpu_drivers.append(driver)
 
-    # Vulkan Support
-    # Check if Mesa/Intel HD graphics GMA supports vulkan
-    # For Ironlake/GMA HD 8086:0046, there is no Vulkan support.
-    vulkan_support = "Sem suporte (GPU Ironlake/GMA HD legado não suporta Vulkan API)"
-    
-    # Video Acceleration
-    # Ironlake (Gen 5) uses i965-va-driver (or libva-intel-driver) on Linux. Supports MPEG2 and partially H.264 decoding.
-    video_accel = "Suporte legado via i965-va-driver (VA-API H.264 parcial / MPEG2 total)"
+    gpu_blob = " ".join(gpu_devices)
+    if "8086:0162" in gpu_blob or "HD Graphics 4000" in gpu_blob:
+        vulkan_support = "Sem Vulkan estável (Mesa ANV pede Gen8+). OpenGL via crocus."
+        video_accel = "i965-va-driver (VA-API) com LIBVA_DRIVER_NAME=i965; KMS i915 modesetting"
+        gpu_note = "Intel HD Graphics 4000 (Ivy Bridge). Sem firmware GuC/HuC."
+    elif "8086:0046" in gpu_blob or "Ironlake" in gpu_blob:
+        vulkan_support = "Sem suporte (GPU Ironlake/GMA HD legado não suporta Vulkan API)"
+        video_accel = "Suporte legado via i965-va-driver (VA-API H.264 parcial / MPEG2 total)"
+        gpu_note = "GPU Ironlake de 1ª geração."
+    else:
+        vulkan_support = "Depende da GPU detectada (ver vainfo e glxinfo)"
+        video_accel = "Verificar vainfo; Intel Gen7 usa i965-va-driver, Gen8+ pode usar iHD"
+        gpu_note = "GPU não classificada por este script."
 
     profile["gpu"] = {
         "devices": gpu_devices,
@@ -198,10 +207,10 @@ def main():
 
     # ----------------- 4. REDE, ÁUDIO E PERIFÉRICOS -----------------
     wifi_out, _, _ = run_cmd("lspci | grep -i -E 'network|wireless'")
-    wifi_card = wifi_out.strip() if wifi_out else "Qualcomm Atheros AR9485 (estimado/não encontrado no lspci)"
+    wifi_card = wifi_out.strip() if wifi_out else "Nenhuma controladora Wi-Fi PCI detectada"
     
     ethernet_out, _, _ = run_cmd("lspci | grep -i ethernet")
-    ethernet_card = ethernet_out.strip() if ethernet_out else "Broadcom BCM57780 Gigabit Ethernet"
+    ethernet_card = ethernet_out.strip() if ethernet_out else "Nenhuma controladora Ethernet PCI detectada"
 
     bluetooth_out, _, _ = run_cmd("lsusb | grep -i blue")
     bluetooth_status = bluetooth_out.strip() if bluetooth_out else "Nenhum adaptador Bluetooth USB detectado"
@@ -220,9 +229,9 @@ def main():
         
     # Secure Boot
     sb_out, _, _ = run_cmd("mokutil --sb-state")
-    secure_boot = sb_out.strip() if sb_out else "Não suportado (BIOS Legado)"
-    if "not supported" in secure_boot.lower() or boot_mode == "BIOS Legado / CSM":
-        secure_boot = "Não suportado (Sistema em modo BIOS Legado)"
+    secure_boot = sb_out.strip() if sb_out else "mokutil não disponível"
+    if boot_mode != "UEFI":
+        secure_boot = "Firmware legado, sem Secure Boot"
 
     profile["network_peripherals"] = {
         "wifi_card": wifi_card,
@@ -234,32 +243,52 @@ def main():
     }
 
     # ----------------- 5. SÍNTESE E RECOMENDAÇÃO DO GAIA OS -----------------
-    # Based on Westmere i7 M640, 6GB RAM, SSD 480GB
+    meminfo, _, _ = run_cmd("awk '/MemTotal/ {print $2}' /proc/meminfo")
+    try:
+        mem_kb = int(meminfo or "0")
+    except ValueError:
+        mem_kb = 0
+    pci_nn, _, _ = run_cmd("lspci -nn")
+    initramfs_modules = ["i915"]
+    if "10ec:8168" in pci_nn or "RTL8111" in pci_nn or "RTL8168" in pci_nn:
+        initramfs_modules.append("r8169")
+    if "168c:" in pci_nn or "AR9485" in pci_nn or "ath9k" in pci_nn.lower():
+        initramfs_modules.append("ath9k")
+    if "14e4:" in pci_nn and "BCM" in pci_nn:
+        initramfs_modules.append("tg3")
+    if mem_kb >= 8 * 1024 * 1024:
+        zram_size = "25% da RAM (zram-tools PERCENT=25)"
+        zram_level = 3
+        zram_why = (
+            "Com 8 GiB ou mais, zRAM do tamanho da RAM só gasta CPU. "
+            "25% cobre pico sem o perfil de notebook de 6 GiB. "
+            "swappiness 60 e page-cluster 0."
+        )
+    else:
+        zram_size = "100% da RAM física"
+        zram_level = 1
+        zram_why = (
+            "Pouca RAM: zRAM zstd no nível 1 amplia a memória sem o custo do nível alto."
+        )
     profile["gaia_os_recommendations"] = {
-        "march_flag": "-march=westmere",
-        "mtune_flag": "-mtune=westmere",
-        "kernel_compiler_flags": "-O2 -pipe -march=westmere -mtune=westmere",
-        "initramfs_modules": ["i915", "ath9k", "tg3"],
+        "march_flag": f"-march={march}",
+        "mtune_flag": f"-mtune={mtune}",
+        "kernel_compiler_flags": f"-O2 -pipe -march={march} -mtune={mtune}",
+        "initramfs_modules": initramfs_modules,
         "zram_recommendation": {
             "algorithm": "zstd",
-            "compression_level": 1,
-            "size": "6GB (100% da RAM física)",
-            "rationale": "Como a máquina possui 6GB de RAM e 2 Cores/4 Threads, a compressão 'zstd' com nível 1 oferece excelente taxa de compressão para otimizar o espaço sem sobrecarregar a CPU. Mantém a máquina responsiva e economiza ciclos valiosos."
-        }
+            "compression_level": zram_level,
+            "size": zram_size,
+            "rationale": zram_why,
+        },
     }
 
-    # Write JSON files
-    json_path1 = "/home/francisco/Documentos/Projetos/gaia-hardware-profile.json"
-    json_path2 = "/home/francisco/Documentos/Projetos/GaiaOs/gaia-hardware-profile.json"
-    
-    # Ensure directory exists for Projects
-    os.makedirs("/home/francisco/Documentos/Projetos", exist_ok=True)
-    os.makedirs("/home/francisco/Documentos/Projetos/GaiaOs", exist_ok=True)
-
-    with open(json_path1, "w", encoding="utf-8") as f:
-        json.dump(profile, f, indent=4, ensure_ascii=False)
-    with open(json_path2, "w", encoding="utf-8") as f:
-        json.dump(profile, f, indent=4, ensure_ascii=False)
+    out_dir = os.environ.get("GAIA_PROFILE_DIR")
+    if not out_dir:
+        legacy = "/home/francisco/Documentos/Projetos/GaiaOS"
+        out_dir = legacy if os.path.isdir(legacy) else os.path.join(os.getcwd(), "hardware-profile")
+    os.makedirs(out_dir, exist_ok=True)
+    json_path1 = os.path.join(out_dir, "gaia-hardware-profile.json")
 
     # Write Markdown files
     md_content = f"""# Relatório Completo de Profiling de Hardware — Gaia OS
@@ -271,13 +300,13 @@ Este relatório apresenta o perfil técnico detalhado obtido diretamente do hard
 ## 1. CPU & ARQUITETURA DE SILÍCIO
 * **Modelo da CPU:** {profile['cpu']['model']}
 * **Arquitetura:** {lscpu_info.get('Architecture', 'x86_64')}
-* **Sufixo/Geração:** Intel Westmere Mobile (Arrandale 32nm)
+* **Sufixo/Geração:** detectada em runtime (`-march={profile['cpu']['march']}`)
 * **Núcleos / Sockets:** {profile['cpu']['sockets']} Socket | {profile['cpu']['cores']} Cores Físicos | {profile['cpu']['threads']} Threads (Tecnologia Hyper-Threading ativa)
 * **Microarquitetura Detectada:** `-march={profile['cpu']['march']}` / `-mtune={profile['cpu']['mtune']}`
 * **Instruções Vetoriais e Criptográficas Suportadas:**
   * **SSE4.2:** {'✅ Sim' if 'sse4_2' in profile['cpu']['vector_crypto_flags'] else '❌ Não'}
   * **AES-NI:** {'✅ Sim' if 'aes' in profile['cpu']['vector_crypto_flags'] else '❌ Não'}
-  * **AVX:** {'✅ Sim' if 'avx' in profile['cpu']['vector_crypto_flags'] else '❌ Não'} (Não suportado em CPUs Westmere)
+  * **AVX:** {'✅ Sim' if 'avx' in profile['cpu']['vector_crypto_flags'] else '❌ Não'}
   * **AVX2:** {'✅ Sim' if 'avx2' in profile['cpu']['vector_crypto_flags'] else '❌ Não'}
   * **AVX512:** {'✅ Sim' if 'avx512*' in profile['cpu']['vector_crypto_flags'] else '❌ Não'}
   * **FMA:** {'✅ Sim' if 'fma' in profile['cpu']['vector_crypto_flags'] else '❌ Não'}
@@ -289,7 +318,7 @@ Este relatório apresenta o perfil técnico detalhado obtido diretamente do hard
   * **Cache L2:** {profile['cpu']['cache_topology']['L2']}
   * **Cache L3:** {profile['cpu']['cache_topology']['L3']} (Compartilhado)
 * **Arquitetura Híbrida (P-Cores vs E-Cores):** {profile['cpu']['hybrid_architecture']} (Arquitetura homogênea pura)
-* **Driver de Escalonamento de Frequência:** `{profile['cpu']['frequency_scaling_driver']}` (Gerenciador clássico ACPI cpufreq em uso)
+* **Driver de Escalonamento de Frequência:** `{profile['cpu']['frequency_scaling_driver']}`
 
 ---
 
@@ -298,12 +327,12 @@ Este relatório apresenta o perfil técnico detalhado obtido diretamente do hard
 * **Driver de Vídeo Ativo:** `{', '.join(profile['gpu']['drivers_in_use']) if profile['gpu']['drivers_in_use'] else 'i915'}`
 * **Suporte a Vulkan:** `{profile['gpu']['vulkan_support']}`
 * **Aceleração Gráfica por Hardware (VA-API):** `{profile['gpu']['video_acceleration']}`
-  * *Observação:* A GPU Ironlake de 1ª geração Core possui recursos de decodificação parcial via VA-API (`i965-va-driver`). Não possui suporte a formatos modernos como VP9 ou AV1.
+  * *Observação:* {gpu_note}
 
 ---
 
 ## 3. MEMÓRIA & ARMAZENAMENTO
-* **Memória RAM Total:** `{profile['memory_storage']['total_ram']}` (Instalada: ~6.0 GB)
+* **Memória RAM Total:** `{profile['memory_storage']['total_ram']}`
 * **Slots de Memória Ocupados (dmidecode):**
 """
     for i, slot in enumerate(profile['memory_storage']['ram_slots']):
@@ -320,8 +349,8 @@ Este relatório apresenta o perfil técnico detalhado obtido diretamente do hard
 ---
 
 ## 4. REDE, ÁUDIO E PERIFÉRICOS
-* **Placa Wi-Fi:** `{profile['network_peripherals']['wifi_card']}` (Módulo do Kernel: `ath9k`)
-* **Placa Ethernet:** `{profile['network_peripherals']['ethernet_card']}` (Módulo do Kernel: `tg3`)
+* **Placa Wi-Fi:** `{profile['network_peripherals']['wifi_card']}`
+* **Placa Ethernet:** `{profile['network_peripherals']['ethernet_card']}`
 * **Bluetooth:** `{profile['network_peripherals']['bluetooth']}`
 * **Servidor de Áudio:** `{profile['network_peripherals']['audio_server']}`
 * **Modo de Boot do Firmware:** `{profile['network_peripherals']['boot_mode']}`
@@ -331,45 +360,35 @@ Este relatório apresenta o perfil técnico detalhado obtido diretamente do hard
 
 ## 5. SÍNTESE E RECOMENDAÇÃO DO GAIA OS
 
-Com base no perfil detalhado da máquina host **Gateway NV55C** (Intel i7 M640 Westmere / 6GB RAM / SSD 480GB), apresentamos as especificações de compilação e otimização recomendadas para a distribuição customizada **Gaia OS**:
+Recomendações calculadas a partir do hardware lido agora (não há mais perfil Westmere fixo):
 
-### A. Flags Recomendadas de Compilação do Kernel e Userland
-* **MARCH_FLAG exato:** `-march=westmere`
-* **MTUNE_FLAG exato:** `-mtune=westmere`
-* **Flags Recomendadas:** `-O2 -pipe -march=westmere -mtune=westmere -fno-plt`
-* *Raciocínio:* A microarquitetura Westmere é beneficiada por otimizações específicas para criptografia rápida AES-NI e operações vetorizadas SSE4.2. Usar `-march=westmere` em vez de genérico garante o uso dessas instruções e de `pclmulqdq`, o que otimiza significativamente o desempenho do kernel em redes e hashing sem incorrer no overhead de instruções não suportadas (como AVX).
+### A. Flags de compilação
+* **MARCH_FLAG:** `{profile['gaia_os_recommendations']['march_flag']}`
+* **MTUNE_FLAG:** `{profile['gaia_os_recommendations']['mtune_flag']}`
+* **Flags:** `{profile['gaia_os_recommendations']['kernel_compiler_flags']}`
+* O kernel e o userland do Debian amd64 já despacham AVX e AES-NI em tempo de execução. Recompilar o sistema inteiro com `-march` não faz parte da ISO.
 
-### B. Módulos de GPU e Wi-Fi Embutidos no `initramfs`
-Para garantir um boot rápido e "flicker-free" (KMS nativo desde o início do carregamento):
-* **Módulos Críticos:** `i915 ath9k tg3`
-* *Configuração do Dracut / Mkinitcpio:*
-  * No Dracut: `force_drivers+=" i915 ath9k tg3 "`
-  * No Mkinitcpio: `MODULES=(i915 ath9k tg3)`
+### B. Módulos no initramfs
+* **Módulos:** `{' '.join(profile['gaia_os_recommendations']['initramfs_modules'])}`
 
-### C. Dimensionamento e Otimização do zRAM
-* **Algoritmo Recomendado:** `zstd` (Nível de compressão: `1`)
-* **Tamanho Ideal:** `6GB (100% da RAM física)`
-* *Raciocínio:*
-  1. A máquina conta com 6GB de memória física, o que pode ser um gargalo em tarefas concorrentes.
-  2. O algoritmo `zstd` oferece taxas de compressão significativamente superiores ao `lz4` ou `lzo-rle` clássico (frequentemente atingindo 3:1 ou superior em dados de RAM).
-  3. Para evitar que o processador dual-core (4 threads) sofra com overhead durante a compressão de memória, recomenda-se configurar o **nível de compressão 1**. Isso garante velocidade semelhante ao `lz4` com taxas de compressão muito superiores, poupando a CPU antiga e maximizando o aproveitamento dos 6GB de RAM.
-  4. Adicionalmente, deve ser mantida uma prioridade alta para o zRAM (`priority=100`) em conjunto com o swapfile secundário do SSD para transbordo seguro de memória.
+### C. zRAM
+* **Algoritmo:** `{profile['gaia_os_recommendations']['zram_recommendation']['algorithm']}` nível `{profile['gaia_os_recommendations']['zram_recommendation']['compression_level']}`
+* **Tamanho:** `{profile['gaia_os_recommendations']['zram_recommendation']['size']}`
+* {profile['gaia_os_recommendations']['zram_recommendation']['rationale']}
 
 ---
 *Relatório gerado automaticamente pelo Engenheiro de Kernel e Sistemas Operacionais da Gaia Works.*
 """
 
-    md_path1 = "/home/francisco/Documentos/Projetos/gaia-hardware-profile.md"
-    md_path2 = "/home/francisco/Documentos/Projetos/GaiaOs/gaia-hardware-profile.md"
-
+    md_path1 = os.path.join(out_dir, "gaia-hardware-profile.md")
+    with open(json_path1, "w", encoding="utf-8") as f:
+        json.dump(profile, f, indent=4, ensure_ascii=False)
     with open(md_path1, "w", encoding="utf-8") as f:
-        f.write(md_content)
-    with open(md_path2, "w", encoding="utf-8") as f:
         f.write(md_content)
 
     print("Profiling concluído com sucesso!")
-    print(f"Arquivos JSON salvos em:\n - {json_path1}\n - {json_path2}")
-    print(f"Arquivos Markdown salvos em:\n - {md_path1}\n - {md_path2}")
+    print(f"JSON: {json_path1}")
+    print(f"Markdown: {md_path1}")
 
 if __name__ == "__main__":
     main()

@@ -24,7 +24,23 @@ case "$cmd" in
             /etc/gaiaos \
             /etc/opt/chrome/policies/managed \
             /etc/systemd/system/gaia* \
-            /usr/local/bin/gaia* \
+            /etc/apt/sources.list \
+            /etc/apt/sources.list.d \
+            /etc/apt/apt.conf.d \
+            /etc/apt/preferences.d \
+            /etc/default/grub \
+            /etc/default/grub.d \
+            /etc/default/zramswap \
+            /etc/sddm.conf.d \
+            /usr/bin/gaia-sec-apply \
+            /usr/bin/gaia-pkg \
+            /usr/bin/gaia-snapshot \
+            /usr/bin/gaia-update \
+            /usr/bin/gaia-lean-services \
+            /usr/bin/gaia-guardian \
+            /usr/bin/gaia-gemini-advisor \
+            /usr/bin/gaia-guardian-ui \
+            /etc/skel \
             /home/francisco/.config/kwinrc \
             /home/francisco/.config/plasmashellrc \
             /home/francisco/.config/kdeglobals 2>/dev/null || true

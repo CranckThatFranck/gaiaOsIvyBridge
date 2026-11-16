@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ -f /usr/share/gaiaos/tests/verify-security.sh ]; then
+    exec bash /usr/share/gaiaos/tests/verify-security.sh
+fi
+echo "verify-security.sh não está em /usr/share/gaiaos/tests" >&2
+exit 1

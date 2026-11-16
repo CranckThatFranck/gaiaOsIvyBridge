@@ -1,8 +1,10 @@
 /*
  * ==============================================================================
- * Gaia OS 1.0 (Westmere Edition) - gaia-guardian.c
- * Daemon Nativo Ultraleve em C (~1 MB RSS RAM) para Telemetria, Prevenção
- * Anti-Congelamento (PSI / zRAM / Thermal) e Orquestração Efêmera do Gemini 3.8 Flash.
+ * Gaia OS Ivy Bridge Edition - gaia-guardian.c
+ * Daemon nativo (~1 MB RSS) de telemetria, PSI e temperatura.
+ * Limiares padrão do desktop i7-3770 (16 GiB): alerta térmico a 90 C
+ * (TJMax 105 C) e pressão de RAM a 90%. Ajustáveis em
+ * /etc/gaiaos/guardian.conf.
  * ==============================================================================
  */
 #define _GNU_SOURCE
@@ -24,11 +26,49 @@
 #define STATUS_JSON "/var/log/gaia-guardian/status.json"
 #define STATUS_TMP "/var/log/gaia-guardian/status.json.tmp"
 #define PID_FILE "/run/gaia-guardian.pid"
-#define ADVISOR_BIN "/usr/local/bin/gaia-gemini-advisor"
+#define ADVISOR_BIN "/usr/bin/gaia-gemini-advisor"
+#define GUARDIAN_CONF "/etc/gaiaos/guardian.conf"
 
 static volatile sig_atomic_t keep_running = 1;
 static volatile sig_atomic_t trigger_gemini_now = 0;
 static volatile sig_atomic_t trigger_reclaim_now = 0;
+
+static double thermal_warn_c = 90.0;
+static double mem_pressure_pct = 90.0;
+static long emergency_avail_mb = 256;
+static char cpu_label[96] = "CPU";
+
+static void trim_inplace(char *s) {
+    char *start = s;
+    while (*start == ' ' || *start == '\t') start++;
+    if (start != s) memmove(s, start, strlen(start) + 1);
+    size_t n = strlen(s);
+    while (n > 0 && (s[n - 1] == '\n' || s[n - 1] == '\r' || s[n - 1] == ' ' || s[n - 1] == '\t')) {
+        s[--n] = '\0';
+    }
+}
+
+static void load_guardian_conf(void) {
+    FILE *fp = fopen(GUARDIAN_CONF, "r");
+    if (!fp) return;
+    char line[256];
+    while (fgets(line, sizeof(line), fp)) {
+        trim_inplace(line);
+        if (line[0] == '\0' || line[0] == '#') continue;
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        *eq = '\0';
+        char *key = line;
+        char *val = eq + 1;
+        trim_inplace(key);
+        trim_inplace(val);
+        if (strcmp(key, "thermal_warn_c") == 0) thermal_warn_c = atof(val);
+        else if (strcmp(key, "mem_pressure_pct") == 0) mem_pressure_pct = atof(val);
+        else if (strcmp(key, "emergency_avail_mb") == 0) emergency_avail_mb = atol(val);
+        else if (strcmp(key, "cpu_label") == 0) snprintf(cpu_label, sizeof(cpu_label), "%s", val);
+    }
+    fclose(fp);
+}
 
 typedef struct {
     long mem_total_kb;
@@ -180,6 +220,8 @@ static void write_status_json(const sys_metrics_t *m) {
         "  \"psi_some_avg10\": %.2f,\n"
         "  \"psi_full_avg10\": %.2f,\n"
         "  \"cpu_temp_c\": %.1f,\n"
+        "  \"thermal_warn_c\": %.1f,\n"
+        "  \"cpu_label\": \"%s\",\n"
         "  \"mglru_enabled\": \"%s\"\n"
         "}\n",
         (long)now,
@@ -195,6 +237,8 @@ static void write_status_json(const sys_metrics_t *m) {
         m->psi_some_avg10,
         m->psi_full_avg10,
         m->cpu_temp_c,
+        thermal_warn_c,
+        cpu_label,
         m->mglru_state
     );
     fclose(fp);
@@ -302,6 +346,7 @@ static void spawn_ephemeral_gemini_advisor(const char *trigger_reason) {
 
 int main(void) {
     mkdir(LOG_DIR, 0755);
+    load_guardian_conf();
 
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -365,9 +410,9 @@ int main(void) {
             last_gemini_consult = now;
         }
 
-        /* Automatic proactive memory optimization when RAM > 80% or PSI some >= 12.0 */
-        if ((used_pct >= 80.0 || m.psi_some_avg10 >= 12.0) && (now - last_auto_reclaim >= 120)) {
-            perform_gentle_memory_reclaim("Pressao de memoria detectada (>80% ou PSI stall)");
+        /* Em 16 GiB o descarte de cache só começa perto de 90% (ou PSI >= 12). */
+        if ((used_pct >= mem_pressure_pct || m.psi_some_avg10 >= 12.0) && (now - last_auto_reclaim >= 120)) {
+            perform_gentle_memory_reclaim("Pressao de memoria detectada");
             last_auto_reclaim = now;
 
             if (now - last_gemini_consult >= 600) {
@@ -376,20 +421,19 @@ int main(void) {
             }
         }
 
-        /* Automatic thermal advisory if Westmere CPU exceeds 82C */
-        if (m.cpu_temp_c >= 82.0 && (now - last_gemini_consult >= 600)) {
-            char tmsg[160];
-            snprintf(tmsg, sizeof(tmsg), "Temperatura elevada detectada no Core i7-640M (%.1f C). Acionando consultor Gemini 3.8 Flash.", m.cpu_temp_c);
+        /* i7-3770: TJMax 105 C. 90 C ainda é operação normal sob carga forte. */
+        if (m.cpu_temp_c >= thermal_warn_c && (now - last_gemini_consult >= 600)) {
+            char tmsg[192];
+            snprintf(tmsg, sizeof(tmsg), "Temperatura elevada em %s (%.1f C, alerta %.0f C).", cpu_label, m.cpu_temp_c, thermal_warn_c);
             log_action("THERMAL-WARN", tmsg);
-            spawn_ephemeral_gemini_advisor("Temperatura elevada da CPU (>82C)");
+            spawn_ephemeral_gemini_advisor("Temperatura elevada da CPU");
             last_gemini_consult = now;
         }
 
-        /* Emergency desktop freeze protection if available RAM drops below 180 MB */
-        if (m.mem_avail_kb > 0 && m.mem_avail_kb < 180 * 1024) {
-            perform_gentle_memory_reclaim("Emergencia RAM < 180 MB");
+        if (m.mem_avail_kb > 0 && m.mem_avail_kb < emergency_avail_mb * 1024) {
+            perform_gentle_memory_reclaim("Emergencia de RAM livre");
             read_metrics(&m);
-            if (m.mem_avail_kb < 160 * 1024) {
+            if (m.mem_avail_kb < (emergency_avail_mb - 32) * 1024) {
                 emergency_protect_desktop();
             }
         }

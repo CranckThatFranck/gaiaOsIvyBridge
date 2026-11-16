@@ -1,0 +1,10 @@
+[Unit]
+Description=Atualização semanal do Gaia OS (snapshot, APT e pacote gaiaos-core)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/gaia-update --auto
+Nice=10
+IOSchedulingClass=idle

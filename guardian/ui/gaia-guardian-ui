@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Gaia OS 1.0 (Westmere Edition) - Gaia Guardian AI Interface (PyQt5)
+Gaia OS Ivy Bridge Edition - Gaia Guardian AI Interface (PyQt6)
 Interface gráfica sob demanda: consome 0 MB de RAM quando fechada e exibe
 telemetria do daemon em C (~1 MB RAM), logs de ações e análises do Gemini 3.8 Flash.
 """
@@ -8,9 +8,9 @@ import json
 import os
 import subprocess
 import sys
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
     QGridLayout,
@@ -150,9 +150,9 @@ class GaiaGuardianWindow(QMainWindow):
         grid = QGridLayout()
         grid.setSpacing(10)
         self.card_ram = MetricCard("RAM Física Usada")
-        self.card_zram = MetricCard("zRAM (zstd 6 GiB)")
+        self.card_zram = MetricCard("zRAM (zstd)")
         self.card_psi = MetricCard("Pressão PSI (Memória)")
-        self.card_temp = MetricCard("Temp. Core i7-640M")
+        self.card_temp = MetricCard("Temperatura da CPU")
         self.card_mglru = MetricCard("Kernel MGLRU / PageCluster")
         self.card_daemon = MetricCard("Consumo Daemon C")
 
@@ -222,8 +222,10 @@ class GaiaGuardianWindow(QMainWindow):
                 self.card_psi.set_value(f"some={psi_s:.2f}% | full={psi_f:.2f}%", psi_color)
 
                 temp = s.get("cpu_temp_c", 0.0)
-                t_color = "#34D399" if temp < 72 else ("#FBBF24" if temp < 82 else "#F87171")
-                self.card_temp.set_value(f"{temp:.1f} °C", t_color)
+                warn = float(s.get("thermal_warn_c", 90.0) or 90.0)
+                t_color = "#34D399" if temp < warn - 15 else ("#FBBF24" if temp < warn else "#F87171")
+                label = s.get("cpu_label") or "CPU"
+                self.card_temp.set_value(f"{temp:.1f} °C  ({label})", t_color)
 
                 self.card_mglru.set_value(f"MGLRU {s.get('mglru_enabled', '0x0007')} | cluster=0", "#A78BFA")
                 rss_kb = s.get("daemon_rss_kb", 0)
@@ -259,7 +261,7 @@ class GaiaGuardianWindow(QMainWindow):
     def trigger_gemini_analysis(self):
         self.btn_gemini.setEnabled(False)
         self.btn_gemini.setText("⏳ Consultando Gemini 3.8 Flash...")
-        self.worker = AsyncTaskThread(["sudo", "/usr/local/bin/gaia-gemini-advisor", "--reason", "Analise interativa via Gaia Guardian UI"])
+        self.worker = AsyncTaskThread(["sudo", "/usr/bin/gaia-gemini-advisor", "--reason", "Analise interativa via Gaia Guardian UI"])
         self.worker.finished_msg.connect(self.on_gemini_done)
         self.worker.start()
 
@@ -290,4 +292,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     win = GaiaGuardianWindow()
     win.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

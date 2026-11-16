@@ -1,0 +1,11 @@
+[General]
+ColorScheme=BreezeDark
+
+[KDE]
+LookAndFeelPackage=org.gaiaos.ivybridge.desktop
+
+[Icons]
+Theme=breeze-dark
+
+[UiSettings]
+ColorScheme=BreezeDark
