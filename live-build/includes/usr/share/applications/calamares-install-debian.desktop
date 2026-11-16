@@ -3,7 +3,9 @@ Type=Application
 Version=1.0
 Name=Instalar Gaia OS
 GenericName=Instalador
-Exec=gaia-install
+# Wrapper do calamares-settings-debian, já instalado em /usr/bin.
+Exec=calamares-install-debian
+TryExec=calamares-install-debian
 Comment=Instala a Gaia OS Ivy Bridge Edition neste computador
 Keywords=calamares;install;gaia;ivybridge
 Icon=install-debian
