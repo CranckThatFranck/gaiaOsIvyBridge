@@ -1,5 +1,5 @@
 Package: gaiaos-core
-Version: 1.0.0+ivybridge1
+Version: 1.0.1+ivybridge1
 Section: admin
 Priority: optional
 Architecture: amd64
@@ -10,3 +10,4 @@ Description: Gaia OS Ivy Bridge Edition — núcleo, escudos e atualização
  Ferramentas, sysctls, escudos (CVE-2026-98432, Node2Shell, PHP2Shell),
  daemon gaia-guardian, zRAM, MGLRU e o atualizador gaia-update para o
  desktop Intel Core i7-3770 (Ivy Bridge, 16 GiB).
+ Inclui o papel de parede oficial Gaia OS Ivy Bridge (claro e escuro).

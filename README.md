@@ -39,6 +39,10 @@ Como gravar o pendrive e instalar: [docs/INSTALACAO_IVYBRIDGE.md](docs/INSTALACA
 
 Na hora: `sudo gaia-update`.
 
+O pacote `gaiaos-core` **1.0.1** traz o papel de parede oficial (claro em `contents/images`, escuro em `contents/images_dark`). O Plasma troca os dois junto com o esquema de cores. Conta nova usa o visual Gaia. Na primeira sessão de quem já está instalado, o papel de parede só muda se ainda for o padrão do Debian (`Next` ou o tema Debian). Uma imagem escolhida à mão fica como está.
+
+Para publicar só esse pacote, sem montar outra ISO: no GitHub Actions, rode o workflow **Publicar gaiaos-core** (ele não dispara o build da imagem). Ele cria a release `gaiaos-core-<versão>`, marcada como latest, com o `.deb`. O `gaia-update` baixa esse arquivo. A ISO continua na release `ivybridge-v1.0`. O workflow só aparece na aba Actions depois que este arquivo estiver na branch padrão (`main`).
+
 ## Construir a ISO
 
 ```bash

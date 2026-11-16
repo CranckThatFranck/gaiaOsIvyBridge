@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "francisco@gaiaos.local",
+                "Name": "Francisco"
+            }
+        ],
+        "Id": "GaiaOS-IvyBridge",
+        "License": "LicenseRef-GaiaOS",
+        "Name": "Gaia OS Ivy Bridge",
+        "Name[pt_BR]": "Gaia OS Ivy Bridge"
+    },
+    "X-KDE-PlasmaImageWallpaper-AccentColor": "#3C2A6E",
+    "X-KDE-PlasmaImageWallpaper-AccentColorDark": "#7A3CFF"
+}

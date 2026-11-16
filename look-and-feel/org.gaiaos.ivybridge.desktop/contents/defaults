@@ -1,0 +1,14 @@
+[Wallpaper]
+Image=GaiaOS-IvyBridge
+
+[kdeglobals][General]
+ColorScheme=BreezeDark
+
+[kdeglobals][Icons]
+Theme=breeze-dark
+
+[kdeglobals][KDE]
+LookAndFeelPackage=org.gaiaos.ivybridge.desktop
+
+[plasmarc][Theme]
+name=default

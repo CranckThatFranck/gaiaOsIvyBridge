@@ -29,6 +29,14 @@ install -m 755 "$ROOT/bin/gaia-postinstall" "$STAGE/usr/bin/gaia-postinstall"
 install -m 755 "$ROOT/bin/gaia-sec-verify" "$STAGE/usr/bin/gaia-sec-verify"
 install -m 755 "$ROOT/bin/gaia-agy-yolo.sh" "$STAGE/usr/bin/agy"
 install -m 755 "$ROOT/bin/gaia-live-session" "$STAGE/usr/lib/gaiaos/gaia-live-session"
+install -m 755 "$ROOT/bin/gaia-wallpaper-default" "$STAGE/usr/lib/gaiaos/gaia-wallpaper-default"
+mkdir -p "$STAGE/usr/share/wallpapers" "$STAGE/usr/share/plasma/look-and-feel" \
+    "$STAGE/etc/skel/.config"
+cp -a "$ROOT/wallpapers/GaiaOS-IvyBridge" "$STAGE/usr/share/wallpapers/"
+cp -a "$ROOT/look-and-feel/org.gaiaos.ivybridge.desktop" \
+    "$STAGE/usr/share/plasma/look-and-feel/"
+install -m 644 "$ROOT/live-build/includes/etc/skel/.config/kdeglobals" \
+    "$STAGE/etc/skel/.config/kdeglobals"
 
 cp -a "$ROOT/packaging/etc-overlay/etc" "$STAGE/"
 mkdir -p "$STAGE/etc/profile.d"

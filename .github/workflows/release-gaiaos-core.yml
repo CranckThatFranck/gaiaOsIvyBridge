@@ -1,0 +1,47 @@
+name: Publicar gaiaos-core
+
+# Só o pacote. Não constrói ISO e não mexe na tag ivybridge-v1.0.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deb:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependências
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential dpkg-dev
+
+      - name: Construir gaiaos-core
+        run: ./scripts/build-gaia-deb.sh
+
+      - name: Publicar release do pacote
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deb="$(ls -1 dist/gaiaos-core_*_amd64.deb | head -1)"
+          ver="$(dpkg-deb -f "$deb" Version)"
+          tag="gaiaos-core-${ver}"
+          notes="Pacote gaiaos-core ${ver}.
+
+          Não há ISO nova nesta release. A imagem instalável continua em
+          https://github.com/CranckThatFranck/gaiaOsIvyBridge/releases/tag/ivybridge-v1.0
+
+          No sistema já instalado: \`sudo gaia-update\` (ou o timer semanal)
+          baixa este .deb se a versão for maior que a instalada."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$deb" --clobber
+          else
+            gh release create "$tag" "$deb" \
+              --title "gaiaos-core ${ver}" \
+              --notes "$notes" \
+              --latest
+          fi

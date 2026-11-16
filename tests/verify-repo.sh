@@ -28,11 +28,19 @@ fi
 echo "[4] Pacote gaiaos-core"
 deb="$(scripts/build-gaia-deb.sh)"
 listing="$(dpkg-deb -c "$deb")"
-for needle in './usr/bin/gaia-update' './usr/bin/gaia-guardian' './etc/sysctl.d/99-gaia-memory-mglru.conf'; do
+for needle in \
+    './usr/bin/gaia-update' \
+    './usr/bin/gaia-guardian' \
+    './etc/sysctl.d/99-gaia-memory-mglru.conf' \
+    './usr/share/wallpapers/GaiaOS-IvyBridge/metadata.json' \
+    './usr/share/wallpapers/GaiaOS-IvyBridge/contents/images/2752x1536.jpg' \
+    './usr/share/wallpapers/GaiaOS-IvyBridge/contents/images_dark/2752x1536.jpg' \
+    './usr/lib/gaiaos/gaia-wallpaper-default'; do
     case "$listing" in
         *"$needle"*) ;;
         *) echo "pacote sem $needle" >&2; exit 1 ;;
     esac
 done
 test "$(dpkg-deb -f "$deb" Package)" = "gaiaos-core"
+test "$(dpkg-deb -f "$deb" Version)" = "1.0.1+ivybridge1"
 echo "OK $deb"
