@@ -36,6 +36,8 @@ if [ -d /home/gaia ]; then
     fi
     if [ -f /usr/share/applications/calamares-install-debian.desktop ]; then
         cp /usr/share/applications/calamares-install-debian.desktop /home/gaia/Desktop/
+        # Plasma 6 trata o bit executável, no arquivo do próprio usuário, como
+        # a marca de lançador confiável. O metadata::trusted do Debian é só do Xfce.
         chmod 755 /home/gaia/Desktop/calamares-install-debian.desktop || true
     fi
     chown -R gaia:gaia /home/gaia

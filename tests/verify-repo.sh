@@ -11,6 +11,14 @@ done < <(find bin scripts live-build -type f \( -name '*.sh' -o -name '*.chroot'
 bash -n tests/verify-security.sh
 bash -n tests/verify-repo.sh
 
+desktop="live-build/includes/usr/share/applications/calamares-install-debian.desktop"
+grep -q '^Exec=calamares-install-debian$' "$desktop"
+grep -q '^TryExec=calamares-install-debian$' "$desktop"
+if grep -q 'gaia-install' "$desktop" bin/gaia-live-session; then
+    echo "ainda há referência a gaia-install" >&2
+    exit 1
+fi
+
 echo "[2] Python e C"
 python3 -m py_compile profile_hardware.py guardian/ui/gaia-guardian-ui guardian/src/gaia-gemini-advisor
 gcc -O2 -Wall -Wextra -std=c11 -o /tmp/gaia-guardian-test guardian/src/gaia-guardian.c
