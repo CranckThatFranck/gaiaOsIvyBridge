@@ -73,7 +73,13 @@ PY
     fi
     log "instalando gaiaos-core $oldver -> $newver ($name)"
     if dpkg -i "$deb" >>"$LOG" 2>&1 || apt-get "${APT_OPTS[@]}" -y -f install >>"$LOG" 2>&1; then
-        return 0
+        local installed_ver
+        installed_ver="$(dpkg-query -W -f='${Version}' gaiaos-core 2>/dev/null || true)"
+        if [ "$installed_ver" = "$newver" ]; then
+            return 0
+        fi
+        log "gaiaos-core ficou na versão '$installed_ver', esperada '$newver'"
+        return 1
     fi
     log "dpkg não instalou $name"
     return 1
